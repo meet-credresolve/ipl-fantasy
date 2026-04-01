@@ -1,5 +1,5 @@
 /**
- * Cron Jobs — Live Scoring + Deadline Reminders
+ * Cron Jobs — Live Scoring + Deadline Reminders (Personal DMs)
  *
  * Uses setInterval instead of node-cron to avoid extra dependencies.
  * Started once from app.js after MongoDB connects.
@@ -13,17 +13,24 @@ const League = require('../models/League.model');
 const { calculateFantasyPoints, applyMultiplier } = require('./scoring.service');
 const { calculateAwards } = require('./awards.service');
 const { getScorecard, mapScorecardToPerformances } = require('./cricket-data.service');
-const { sendDeadlineReminder, sendScoreUpdate, sendMatchSummary } = require('./whatsapp.service');
+const { sendDeadlineReminders, sendScoreUpdates, sendMatchSummaries } = require('./whatsapp.service');
 
 // Track which matches we've already sent reminders for
 const sentReminders = new Set(); // matchId strings
-// Track last score update time per match to avoid spamming WhatsApp
-const lastWhatsAppUpdate = new Map(); // matchId -> timestamp
+// Track last score update time per match to avoid spamming
+const lastDMUpdate = new Map(); // matchId -> timestamp
+
+/**
+ * Get all league members with phone numbers.
+ */
+async function getLeagueMembers() {
+  const league = await League.findOne({});
+  if (!league) return [];
+  return User.find({ _id: { $in: league.members }, phone: { $ne: '' } });
+}
 
 /**
  * CRON 1: Live Score Fetcher — runs every 3 minutes during live matches.
- * Fetches scorecard from CricketData.org, maps to performances,
- * recalculates fantasy points for all teams.
  */
 async function liveScoreTick() {
   try {
@@ -32,11 +39,10 @@ async function liveScoreTick() {
 
     for (const match of liveMatches) {
       try {
-        // Fetch latest scorecard
         const scorecard = await getScorecard(match.cricApiMatchId);
         if (!scorecard) continue;
 
-        // Build player name -> doc map for fuzzy matching
+        // Build player name -> doc map
         const allPlayers = await Player.find({
           franchise: { $in: [match.team1, match.team2] },
         });
@@ -45,7 +51,7 @@ async function liveScoreTick() {
           playersByName.set(p.name.trim().toLowerCase(), p);
         }
 
-        // Map scorecard to our performance format
+        // Map scorecard to performances
         const performances = mapScorecardToPerformances(scorecard, playersByName);
         if (performances.length === 0) continue;
 
@@ -78,21 +84,21 @@ async function liveScoreTick() {
           await team.save();
         }
 
-        // Send WhatsApp update every 15 minutes (not every poll)
+        // Send personal DMs every 15 minutes (not every poll)
         const now = Date.now();
-        const lastSent = lastWhatsAppUpdate.get(String(match._id)) || 0;
+        const lastSent = lastDMUpdate.get(String(match._id)) || 0;
         if (now - lastSent >= 15 * 60 * 1000) {
-          const topTeams = teams
-            .sort((a, b) => b.totalPoints - a.totalPoints)
-            .slice(0, 5);
+          const sortedTeams = [...teams].sort((a, b) => b.totalPoints - a.totalPoints);
           const topUsers = [];
-          for (const t of topTeams) {
+          for (const t of sortedTeams) {
             const user = await User.findById(t.userId);
-            if (user) topUsers.push({ userName: user.name, totalPoints: t.totalPoints });
+            if (user) topUsers.push({ userId: t.userId, userName: user.name, totalPoints: t.totalPoints });
           }
-          if (topUsers.length > 0) {
-            await sendScoreUpdate(match, topUsers);
-            lastWhatsAppUpdate.set(String(match._id), now);
+
+          const allMembers = await getLeagueMembers();
+          if (topUsers.length > 0 && allMembers.length > 0) {
+            await sendScoreUpdates(match, allMembers, topUsers);
+            lastDMUpdate.set(String(match._id), now);
           }
         }
 
@@ -108,15 +114,13 @@ async function liveScoreTick() {
 
 /**
  * CRON 2: Deadline Reminders — runs every 10 minutes.
- * Checks upcoming matches within 2 hours of deadline.
- * Tags users in the WhatsApp group who haven't submitted teams.
+ * Sends personal DMs to users who haven't submitted teams.
  */
 async function deadlineReminderTick() {
   try {
     const now = new Date();
     const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
-    // Find matches with deadline in the next 2 hours that aren't completed/abandoned
     const upcomingMatches = await Match.find({
       status: { $in: ['upcoming', 'toss_done'] },
       deadline: { $gte: now, $lte: twoHoursFromNow },
@@ -124,19 +128,14 @@ async function deadlineReminderTick() {
 
     for (const match of upcomingMatches) {
       const matchKey = String(match._id);
-
-      // Only send one reminder per match
       if (sentReminders.has(matchKey)) continue;
 
-      // Get all league members
-      const league = await League.findOne({}).populate('members');
+      const league = await League.findOne({});
       if (!league) continue;
 
-      // Find who has already submitted a team
       const submittedTeams = await FantasyTeam.find({ matchId: match._id });
       const submittedUserIds = new Set(submittedTeams.map((t) => String(t.userId)));
 
-      // Find users who haven't submitted and have phone numbers
       const missingUsers = [];
       for (const memberId of league.members) {
         const userId = String(memberId._id ?? memberId);
@@ -149,9 +148,9 @@ async function deadlineReminderTick() {
       }
 
       if (missingUsers.length > 0) {
-        await sendDeadlineReminder(match, missingUsers);
+        await sendDeadlineReminders(match, missingUsers);
         sentReminders.add(matchKey);
-        console.log(`[Reminder] Sent deadline reminder for ${match.team1} vs ${match.team2} — ${missingUsers.length} users tagged`);
+        console.log(`[Reminder] Sent DMs for ${match.team1} vs ${match.team2} — ${missingUsers.length} users`);
       }
     }
   } catch (err) {
@@ -164,15 +163,9 @@ async function deadlineReminderTick() {
  */
 function startCronJobs() {
   console.log('⏰ Cron jobs started');
-
-  // Live scores: every 3 minutes
   setInterval(liveScoreTick, 3 * 60 * 1000);
-
-  // Deadline reminders: every 10 minutes
   setInterval(deadlineReminderTick, 10 * 60 * 1000);
-
-  // Run deadline check immediately on startup
-  deadlineReminderTick();
+  deadlineReminderTick(); // run immediately on startup
 }
 
 module.exports = { startCronJobs, liveScoreTick, deadlineReminderTick };
