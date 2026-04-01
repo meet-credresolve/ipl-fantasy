@@ -60,12 +60,9 @@ const upsertTeam = async (req, res) => {
     const match = await Match.findById(matchId);
     if (!match) return res.status(404).json({ message: 'Match not found' });
 
-    // Check deadline
+    // Deadline is the single source of truth (admin can override it)
     if (new Date() >= match.deadline) {
       return res.status(403).json({ message: 'Team submission deadline has passed' });
-    }
-    if (match.status !== 'upcoming' && match.status !== 'toss_done') {
-      return res.status(403).json({ message: 'Match has already started' });
     }
 
     const validationError = await validateTeam(players, captain, viceCaptain);
