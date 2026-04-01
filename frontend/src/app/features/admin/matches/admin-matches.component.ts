@@ -93,6 +93,27 @@ const FRANCHISES: Franchise[] = ['CSK', 'MI', 'RCB', 'KKR', 'SRH', 'RR', 'PBKS',
               <mat-chip>{{ match.status }}</mat-chip>
             </div>
 
+            <!-- Deadline display + override -->
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+              <span>🔒 Deadline: {{ formatDate(match.deadline) }}</span>
+              @if (match.status === 'upcoming' || match.status === 'toss_done' || match.status === 'live') {
+                <button mat-stroked-button class="text-xs" (click)="toggleDeadlineEdit(match._id)">
+                  Edit
+                </button>
+              }
+            </div>
+            @if (editingDeadlineId() === match._id) {
+              <div class="flex items-center gap-2">
+                <mat-form-field appearance="outline" class="text-sm">
+                  <mat-label>New Deadline (IST)</mat-label>
+                  <input matInput type="datetime-local" [value]="toLocalDatetime(match.deadline)"
+                         (change)="onDeadlineChange($event)" />
+                </mat-form-field>
+                <button mat-flat-button color="primary" (click)="saveDeadline(match._id)">Save</button>
+                <button mat-button (click)="editingDeadlineId.set(null)">Cancel</button>
+              </div>
+            }
+
             <!-- Action buttons per status -->
             <div class="flex flex-wrap gap-2">
               @if (match.status === 'upcoming') {
@@ -128,6 +149,8 @@ export class AdminMatchesComponent {
   readonly franchises = FRANCHISES;
   readonly showForm = signal(false);
   readonly saving = signal(false);
+  readonly editingDeadlineId = signal<string | null>(null);
+  private newDeadline = '';
 
   readonly matches = resource({
     loader: () => firstValueFrom(this.api.getMatches()),
@@ -182,5 +205,33 @@ export class AdminMatchesComponent {
     return new Date(d).toLocaleString('en-IN', {
       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata',
     }) + ' IST';
+  }
+
+  toggleDeadlineEdit(matchId: string) {
+    this.editingDeadlineId.set(this.editingDeadlineId() === matchId ? null : matchId);
+  }
+
+  toLocalDatetime(isoStr: string): string {
+    // Convert UTC ISO string to local datetime-local input value in IST
+    const d = new Date(isoStr);
+    const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+    return ist.toISOString().slice(0, 16);
+  }
+
+  onDeadlineChange(event: Event) {
+    this.newDeadline = (event.target as HTMLInputElement).value;
+  }
+
+  saveDeadline(matchId: string) {
+    if (!this.newDeadline) return;
+    const deadline = new Date(this.newDeadline).toISOString();
+    this.api.updateMatch(matchId, { deadline } as any).subscribe({
+      next: () => {
+        this.snackBar.open('✅ Deadline updated', 'OK', { duration: 2000 });
+        this.editingDeadlineId.set(null);
+        this.matches.reload();
+      },
+      error: () => this.snackBar.open('Failed to update deadline', 'OK', { duration: 2000 }),
+    });
   }
 }
