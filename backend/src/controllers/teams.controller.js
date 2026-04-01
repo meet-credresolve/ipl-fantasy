@@ -1,0 +1,123 @@
+const FantasyTeam = require('../models/FantasyTeam.model');
+const Match = require('../models/Match.model');
+const Player = require('../models/Player.model');
+
+const TEAM_SIZE = 11;
+const MAX_FROM_ONE_FRANCHISE = 7;
+const TOTAL_BUDGET = 100;
+
+// Validate team composition rules from REQUIREMENTS.MD Section 2
+async function validateTeam(playerIds, captainId, viceCaptainId) {
+  if (playerIds.length !== TEAM_SIZE) {
+    return `Team must have exactly ${TEAM_SIZE} players`;
+  }
+
+  const uniqueIds = new Set(playerIds.map(String));
+  if (uniqueIds.size !== TEAM_SIZE) return 'Duplicate players not allowed';
+
+  if (!uniqueIds.has(String(captainId))) return 'Captain must be in the team';
+  if (!uniqueIds.has(String(viceCaptainId))) return 'Vice-captain must be in the team';
+  if (String(captainId) === String(viceCaptainId)) return 'Captain and vice-captain must be different';
+
+  const players = await Player.find({ _id: { $in: playerIds } });
+  if (players.length !== TEAM_SIZE) return 'One or more players not found';
+
+  const totalCredits = players.reduce((sum, p) => sum + p.credits, 0);
+  if (totalCredits > TOTAL_BUDGET) return `Team exceeds budget of ${TOTAL_BUDGET} credits (used ${totalCredits})`;
+
+  const roleCounts = { WK: 0, BAT: 0, AR: 0, BOWL: 0 };
+  const franchiseCounts = {};
+
+  for (const p of players) {
+    roleCounts[p.role]++;
+    franchiseCounts[p.franchise] = (franchiseCounts[p.franchise] || 0) + 1;
+  }
+
+  if (roleCounts.WK < 1 || roleCounts.WK > 4) return 'Team must have 1–4 Wicket-Keepers';
+  if (roleCounts.BAT < 3 || roleCounts.BAT > 6) return 'Team must have 3–6 Batters';
+  if (roleCounts.AR < 1 || roleCounts.AR > 4) return 'Team must have 1–4 All-Rounders';
+  if (roleCounts.BOWL < 3 || roleCounts.BOWL > 6) return 'Team must have 3–6 Bowlers';
+
+  for (const [franchise, count] of Object.entries(franchiseCounts)) {
+    if (count > MAX_FROM_ONE_FRANCHISE) {
+      return `Maximum ${MAX_FROM_ONE_FRANCHISE} players from one franchise (${franchise} has ${count})`;
+    }
+  }
+
+  return null; // null = valid
+}
+
+// POST /api/teams  — create or update (upsert) a fantasy team
+const upsertTeam = async (req, res) => {
+  const { matchId, players, captain, viceCaptain } = req.body;
+
+  if (!matchId || !players || !captain || !viceCaptain) {
+    return res.status(400).json({ message: 'matchId, players, captain, and viceCaptain are required' });
+  }
+
+  try {
+    const match = await Match.findById(matchId);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    // Check deadline
+    if (new Date() >= match.deadline) {
+      return res.status(403).json({ message: 'Team submission deadline has passed' });
+    }
+    if (match.status !== 'upcoming' && match.status !== 'toss_done') {
+      return res.status(403).json({ message: 'Match has already started' });
+    }
+
+    const validationError = await validateTeam(players, captain, viceCaptain);
+    if (validationError) return res.status(400).json({ message: validationError });
+
+    const team = await FantasyTeam.findOneAndUpdate(
+      { userId: req.user._id, matchId },
+      { players, captain, viceCaptain, totalPoints: 0 },
+      { upsert: true, new: true, runValidators: true }
+    );
+
+    res.status(200).json(team);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/teams/my/:matchId  — own team for a match
+const getMyTeam = async (req, res) => {
+  try {
+    const team = await FantasyTeam.findOne({ userId: req.user._id, matchId: req.params.matchId })
+      .populate('players', 'name franchise role credits imageUrl')
+      .populate('captain', 'name')
+      .populate('viceCaptain', 'name');
+
+    if (!team) return res.status(404).json({ message: 'No team found for this match' });
+    res.json(team);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/teams/all/:matchId  — all users' teams (only visible after deadline)
+const getAllTeams = async (req, res) => {
+  try {
+    const match = await Match.findById(req.params.matchId);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    if (new Date() < match.deadline) {
+      return res.status(403).json({ message: 'Teams are hidden until the deadline passes' });
+    }
+
+    const teams = await FantasyTeam.find({ matchId: req.params.matchId })
+      .populate('userId', 'name')
+      .populate('players', 'name franchise role imageUrl')
+      .populate('captain', 'name')
+      .populate('viceCaptain', 'name')
+      .sort({ totalPoints: -1 });
+
+    res.json(teams);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { upsertTeam, getMyTeam, getAllTeams };

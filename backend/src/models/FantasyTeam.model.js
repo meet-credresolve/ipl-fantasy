@@ -1,0 +1,19 @@
+const mongoose = require('mongoose');
+
+const fantasyTeamSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    matchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Match', required: true },
+    players: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }], // exactly 11
+    captain: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', required: true },
+    viceCaptain: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', required: true },
+    totalPoints: { type: Number, default: 0 },
+    isLocked: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+// One team per user per match
+fantasyTeamSchema.index({ userId: 1, matchId: 1 }, { unique: true });
+
+module.exports = mongoose.model('FantasyTeam', fantasyTeamSchema);

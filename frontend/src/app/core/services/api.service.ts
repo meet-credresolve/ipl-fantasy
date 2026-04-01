@@ -1,0 +1,94 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import {
+  Player,
+  Match,
+  FantasyTeam,
+  LeaderboardEntry,
+  PlayerPerformance,
+  MatchSquadResponse,
+} from '../models/api.models';
+
+/**
+ * Central API service — thin wrapper around HttpClient.
+ * All methods return typed Observables.
+ */
+@Injectable({ providedIn: 'root' })
+export class ApiService {
+  private readonly http = inject(HttpClient);
+  private readonly base = environment.apiUrl;
+
+  // ── Players ────────────────────────────────────────────────────────────────
+  getPlayers(filters: { role?: string; franchise?: string; search?: string } = {}) {
+    let params = new HttpParams();
+    if (filters.role) params = params.set('role', filters.role);
+    if (filters.franchise) params = params.set('franchise', filters.franchise);
+    if (filters.search) params = params.set('search', filters.search);
+    return this.http.get<Player[]>(`${this.base}/players`, { params });
+  }
+
+  createPlayer(data: Partial<Player>) {
+    return this.http.post<Player>(`${this.base}/players`, data);
+  }
+
+  updatePlayer(id: string, data: Partial<Player>) {
+    return this.http.put<Player>(`${this.base}/players/${id}`, data);
+  }
+
+  deletePlayer(id: string) {
+    return this.http.delete(`${this.base}/players/${id}`);
+  }
+
+  // ── Matches ────────────────────────────────────────────────────────────────
+  getMatches() {
+    return this.http.get<Match[]>(`${this.base}/matches`);
+  }
+
+  getMatch(id: string) {
+    return this.http.get<Match>(`${this.base}/matches/${id}`);
+  }
+
+  getMatchSquad(id: string) {
+    return this.http.get<MatchSquadResponse>(`${this.base}/matches/${id}/squad`);
+  }
+
+  createMatch(data: Partial<Match>) {
+    return this.http.post<Match>(`${this.base}/matches`, data);
+  }
+
+  updateMatch(id: string, data: Partial<Match> & { playingXI?: any }) {
+    return this.http.patch<Match>(`${this.base}/matches/${id}`, data);
+  }
+
+  // ── Fantasy Teams ──────────────────────────────────────────────────────────
+  upsertTeam(payload: { matchId: string; players: string[]; captain: string; viceCaptain: string }) {
+    return this.http.post<FantasyTeam>(`${this.base}/teams`, payload);
+  }
+
+  getMyTeam(matchId: string) {
+    return this.http.get<FantasyTeam>(`${this.base}/teams/my/${matchId}`);
+  }
+
+  getAllTeams(matchId: string) {
+    return this.http.get<FantasyTeam[]>(`${this.base}/teams/all/${matchId}`);
+  }
+
+  // ── Scores ─────────────────────────────────────────────────────────────────
+  getScores(matchId: string) {
+    return this.http.get<PlayerPerformance[]>(`${this.base}/scores/${matchId}`);
+  }
+
+  submitScores(matchId: string, performances: Partial<PlayerPerformance>[]) {
+    return this.http.post(`${this.base}/scores/${matchId}`, { performances });
+  }
+
+  // ── Leaderboard ────────────────────────────────────────────────────────────
+  getMatchLeaderboard(matchId: string) {
+    return this.http.get<LeaderboardEntry[]>(`${this.base}/leaderboard/match/${matchId}`);
+  }
+
+  getSeasonLeaderboard() {
+    return this.http.get<LeaderboardEntry[]>(`${this.base}/leaderboard/season`);
+  }
+}

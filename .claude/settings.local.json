@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(ng version:*)",
+      "Bash(npm install:*)",
+      "Bash(ng new:*)",
+      "Bash(ng add:*)",
+      "Bash(node -e \"const pkg = require\\('./node_modules/@tailwindcss/postcss/package.json'\\); console.log\\('postcss plugin:', pkg.version\\)\")",
+      "Bash(ng build:*)",
+      "Bash(grep -c \"flex\" dist/frontend/browser/*.css)",
+      "Bash(grep -o 'bg-gradient-to' dist/frontend/browser/*.css)",
+      "Bash(grep -o 'text-2xl' dist/frontend/browser/*.css)",
+      "Bash(wc -c dist/frontend/browser/*.css)",
+      "WebSearch"
+    ]
+  }
+}
