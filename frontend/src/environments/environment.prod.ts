@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://YOUR_RENDER_APP_NAME.onrender.com/api', // replace after Render deploy
+  apiUrl: 'https://ipl-fantasy-crm6.onrender.com/api',
 };
