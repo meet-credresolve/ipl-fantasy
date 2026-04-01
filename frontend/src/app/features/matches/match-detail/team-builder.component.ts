@@ -175,7 +175,8 @@ export class TeamBuilderComponent implements OnInit {
 
   readonly filteredPlayers = computed(() => {
     const filter = this.activeRoleFilter();
-    return filter === 'ALL' ? this.players() : this.players().filter((p) => p.role === filter);
+    const list = filter === 'ALL' ? this.players() : this.players().filter((p) => p.role === filter);
+    return [...list].sort((a, b) => b.credits - a.credits);
   });
 
   readonly creditsUsed = computed(() => {
