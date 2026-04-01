@@ -2,8 +2,8 @@
  * CricketData.org API Integration
  * Free tier: 100 hits/day — poll smartly.
  *
+ * Base URL: https://api.cricapi.com/v1
  * Env: CRICKET_DATA_API_KEY
- * Docs: https://cricketdata.org
  */
 const Match = require('../models/Match.model');
 
@@ -16,6 +16,7 @@ function apiKey() {
 async function apiFetch(endpoint, params = {}) {
   const url = new URL(`${BASE_URL}/${endpoint}`);
   url.searchParams.set('apikey', apiKey());
+  url.searchParams.set('offset', '0');
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
   }
@@ -23,7 +24,7 @@ async function apiFetch(endpoint, params = {}) {
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`CricketData API ${res.status}: ${res.statusText}`);
   const data = await res.json();
-  if (data.status !== 'success') throw new Error(`CricketData API error: ${data.info || 'Unknown'}`);
+  if (data.status !== 'success') throw new Error(`CricketData API error: ${data.info || JSON.stringify(data)}`);
   return data;
 }
 
@@ -31,16 +32,19 @@ async function apiFetch(endpoint, params = {}) {
  * Get current live matches (IPL filter)
  */
 async function getLiveMatches() {
-  const data = await apiFetch('currentMatches', { offset: 0 });
-  // Filter to IPL T20 matches
+  const data = await apiFetch('currentMatches');
   return (data.data || []).filter(
-    (m) => m.series_id && m.matchType === 't20' && (m.name || '').toLowerCase().includes('ipl')
+    (m) => m.matchType === 't20' && (m.name || '').toLowerCase().includes('ipl')
   );
 }
 
 /**
- * Get scorecard for a specific match
- * Returns batting + bowling arrays per innings
+ * Get scorecard for a specific match.
+ * Response shape:
+ *   data.scorecard[] = innings, each with:
+ *     batting[]: { batsman: {id, name}, r, b, 4s, 6s, sr, dismissal, bowler: {id, name} }
+ *     bowling[]: { bowler: {id, name}, o, m, r, w, eco }
+ *     catching[]: { catcher: {id, name}, catch, stumped, runout }
  */
 async function getScorecard(cricApiMatchId) {
   const data = await apiFetch('match_scorecard', { id: cricApiMatchId });
@@ -48,7 +52,15 @@ async function getScorecard(cricApiMatchId) {
 }
 
 /**
- * Get match info (playing XI, toss, status)
+ * Get match info (playing XI via squad endpoint)
+ */
+async function getMatchSquad(cricApiMatchId) {
+  const data = await apiFetch('match_squad', { id: cricApiMatchId });
+  return data.data; // array of { teamName, players[] }
+}
+
+/**
+ * Get match info (toss, status, winner)
  */
 async function getMatchInfo(cricApiMatchId) {
   const data = await apiFetch('match_info', { id: cricApiMatchId });
@@ -57,7 +69,11 @@ async function getMatchInfo(cricApiMatchId) {
 
 /**
  * Map CricketData scorecard to our PlayerPerformance format.
- * Takes scorecard data and our Player docs, returns performances array.
+ * Uses real API field names: r, b, 4s, 6s, o, m, w, dismissal, catching array.
+ *
+ * @param {Object} scorecard - data from getScorecard()
+ * @param {Map<string, Object>} playersByName - lowercase name -> Player doc
+ * @returns {Array} performances array matching PlayerPerformance schema
  */
 function mapScorecardToPerformances(scorecard, playersByName) {
   const performances = new Map(); // playerId -> perf object
@@ -71,107 +87,78 @@ function mapScorecardToPerformances(scorecard, playersByName) {
     catches: 0, stumpings: 0, runOutDirect: 0, runOutIndirect: 0,
   });
 
-  const findPlayer = (name) => {
+  const findPlayer = (nameOrObj) => {
+    if (!nameOrObj) return null;
+    const name = typeof nameOrObj === 'object' ? nameOrObj.name : nameOrObj;
     if (!name) return null;
-    // Fuzzy match: try exact, then last-name match
     const clean = name.trim().toLowerCase();
+
+    // Exact match
     let player = playersByName.get(clean);
-    if (!player) {
-      // Try matching by last name
-      const lastName = clean.split(' ').pop();
-      for (const [key, p] of playersByName) {
-        if (key.endsWith(lastName) || key.includes(lastName)) {
-          player = p;
-          break;
-        }
-      }
+    if (player) return player;
+
+    // Last name match
+    const lastName = clean.split(' ').pop();
+    for (const [key, p] of playersByName) {
+      if (key.endsWith(lastName) || key.includes(lastName)) return p;
     }
-    return player;
+    return null;
   };
 
-  // Process each innings scorecard
+  const getOrInit = (playerId) => {
+    const id = String(playerId);
+    if (!performances.has(id)) performances.set(id, initPerf(id));
+    return performances.get(id);
+  };
+
   for (const innings of scorecard?.scorecard || []) {
-    // Batting
+    // ── Batting ──
     for (const bat of innings.batting || []) {
-      const player = findPlayer(bat.batsman?.name || bat.batsman);
+      const player = findPlayer(bat.batsman);
       if (!player) continue;
-      const id = String(player._id);
-      if (!performances.has(id)) performances.set(id, initPerf(id));
-      const perf = performances.get(id);
+      const perf = getOrInit(player._id);
       perf.didBat = true;
-      perf.runs = bat.r ?? bat.runs ?? 0;
-      perf.ballsFaced = bat.b ?? bat.balls ?? 0;
-      perf.fours = bat['4s'] ?? bat.fours ?? 0;
-      perf.sixes = bat['6s'] ?? bat.sixes ?? 0;
-      perf.isDismissed = !!(bat.dismissal && bat.dismissal !== 'not out');
+      perf.runs = bat.r ?? 0;
+      perf.ballsFaced = bat.b ?? 0;
+      perf.fours = bat['4s'] ?? 0;
+      perf.sixes = bat['6s'] ?? 0;
+      perf.isDismissed = !!(bat.dismissal && bat.dismissal.toLowerCase() !== 'not out');
+
+      // Check if dismissal was LBW or Bowled (credit the bowler)
+      if (bat.dismissal && /\b(lbw|bowled)\b/i.test(bat.dismissal) && bat.bowler) {
+        const bowler = findPlayer(bat.bowler);
+        if (bowler) {
+          const bowlerPerf = getOrInit(bowler._id);
+          bowlerPerf.lbwBowledWickets += 1;
+        }
+      }
     }
 
-    // Bowling
+    // ── Bowling ──
     for (const bowl of innings.bowling || []) {
-      const player = findPlayer(bowl.bowler?.name || bowl.bowler);
+      const player = findPlayer(bowl.bowler);
       if (!player) continue;
-      const id = String(player._id);
-      if (!performances.has(id)) performances.set(id, initPerf(id));
-      const perf = performances.get(id);
-      perf.oversBowled = bowl.o ?? bowl.overs ?? 0;
-      perf.runsConceded = bowl.r ?? bowl.runs ?? 0;
-      perf.wickets = bowl.w ?? bowl.wickets ?? 0;
-      perf.maidens = bowl.m ?? bowl.maidens ?? 0;
-      // Count LBW/Bowled from wicket descriptions
-      perf.lbwBowledWickets = (bowl.wicketDetails || []).filter(
-        (d) => /\b(lbw|bowled)\b/i.test(d)
-      ).length;
+      const perf = getOrInit(player._id);
+      perf.oversBowled = bowl.o ?? 0;
+      perf.runsConceded = bowl.r ?? 0;
+      perf.wickets = bowl.w ?? 0;
+      perf.maidens = bowl.m ?? 0;
     }
 
-    // Fielding (catches, stumpings, run-outs from dismissal text)
-    for (const bat of innings.batting || []) {
-      const dismissal = bat.dismissal || '';
-      // "c PlayerName b BowlerName"
-      const catchMatch = dismissal.match(/^c\s+(.+?)\s+b\s+/i);
-      if (catchMatch) {
-        const catcher = findPlayer(catchMatch[1]);
-        if (catcher) {
-          const id = String(catcher._id);
-          if (!performances.has(id)) performances.set(id, initPerf(id));
-          performances.get(id).catches += 1;
-        }
-      }
-      // "st PlayerName b BowlerName"
-      const stumpMatch = dismissal.match(/^st\s+(.+?)\s+b\s+/i);
-      if (stumpMatch) {
-        const stumper = findPlayer(stumpMatch[1]);
-        if (stumper) {
-          const id = String(stumper._id);
-          if (!performances.has(id)) performances.set(id, initPerf(id));
-          performances.get(id).stumpings += 1;
-        }
-      }
-      // "run out (PlayerName)" or "run out (P1/P2)"
-      const roMatch = dismissal.match(/run\s+out\s+\((.+?)\)/i);
-      if (roMatch) {
-        const names = roMatch[1].split('/').map((n) => n.trim());
-        if (names.length === 1) {
-          const fielder = findPlayer(names[0]);
-          if (fielder) {
-            const id = String(fielder._id);
-            if (!performances.has(id)) performances.set(id, initPerf(id));
-            performances.get(id).runOutDirect += 1;
-          }
-        } else {
-          for (const n of names) {
-            const fielder = findPlayer(n);
-            if (fielder) {
-              const id = String(fielder._id);
-              if (!performances.has(id)) performances.set(id, initPerf(id));
-              performances.get(id).runOutIndirect += 1;
-            }
-          }
-        }
-      }
+    // ── Fielding (from catching array) ──
+    for (const field of innings.catching || []) {
+      const player = findPlayer(field.catcher);
+      if (!player) continue;
+      const perf = getOrInit(player._id);
+      perf.catches += field.catch ?? 0;
+      perf.stumpings += field.stumped ?? 0;
+      // API gives total runout count; treat as direct if 1, indirect split not available
+      const runouts = field.runout ?? 0;
+      perf.runOutDirect += runouts;
     }
   }
 
   return Array.from(performances.values());
 }
 
-module.exports = { getLiveMatches, getScorecard, getMatchInfo, mapScorecardToPerformances };
+module.exports = { getLiveMatches, getScorecard, getMatchSquad, getMatchInfo, mapScorecardToPerformances };
