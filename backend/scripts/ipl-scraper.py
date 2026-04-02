@@ -810,10 +810,10 @@ def detect_takeovers(db, match, team_scores, state):
     if not team_scores or len(team_scores) < 2:
         return
 
-    # Build current ranking: {userName: {rank, points}}
+    # Build current ranking: {userName: {rank, points, userId}}
     current = {}
     for i, ts in enumerate(team_scores):
-        current[ts["userName"]] = {"rank": i + 1, "points": ts["totalPoints"]}
+        current[ts["userName"]] = {"rank": i + 1, "points": ts["totalPoints"], "userId": ts.get("userId", "")}
 
     # Load previous ranking from state
     prev = state.get("last_dm", {}).get(rankings_key, {})
@@ -847,6 +847,7 @@ def detect_takeovers(db, match, team_scores, state):
                 if overtaken:
                     takeovers.append({
                         "name": name,
+                        "userId": cur_info.get("userId", ""),
                         "prev_rank": prev_rank,
                         "cur_rank": cur_rank,
                         "points_gained": points_gained,
@@ -893,8 +894,13 @@ def detect_takeovers(db, match, team_scores, state):
                f"{reason}\n\n"
                f"\U0001f525 The race is ON!")
 
-        gif = random.choice(MILESTONE_GIFS.get("takeover", MILESTONE_GIFS["fifty"]))
-        send_group_gif(gif, msg)
+        # Use personalized cartoon avatar if available, else fallback to generic GIF
+        avatar_url = f"https://dotsai.in/spl-avatars/{to.get('userId', '')}.png"
+        if to.get("userId"):
+            send_group_gif(avatar_url, msg)
+        else:
+            gif = random.choice(MILESTONE_GIFS.get("takeover", MILESTONE_GIFS["fifty"]))
+            send_group_gif(gif, msg)
         sent_takeovers.add(dedup)
         print(f"    Takeover: {to['name']} #{to['prev_rank']}->{to['cur_rank']} (overtook {overtaken_names})")
 
