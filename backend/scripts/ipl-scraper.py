@@ -12,6 +12,7 @@ Cron:   */3 14-23 * * * /usr/bin/python3 /opt/services/ipl-scraper/ipl-scraper.p
 import re
 import json
 import time
+import random
 import requests
 from datetime import datetime, timezone, timedelta
 from pymongo import MongoClient
@@ -29,7 +30,7 @@ if _env_path.exists():
             os.environ.setdefault(k.strip(), v.strip())
 MONGO_URI = os.environ.get('MONGO_URI', 'SET_MONGO_URI_IN_ENV')
 WA_URL = "https://wa.dotsai.cloud/api/send/text"
-WA_TOKEN = os.environ.get('WA_TOKEN', 'SET_WA_TOKEN_IN_ENV')
+WA_TOKEN = os.environ.get('WA_TOKEN', os.environ.get('WHATSAPP_API_TOKEN', 'SET_WA_TOKEN_IN_ENV'))
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 IST = timezone(timedelta(hours=5, minutes=30))
 DM_INTERVAL_MIN = 15
@@ -572,6 +573,7 @@ def send_submission_reminders(db, state):
     40 min, 20 min, 10 min — showing who submitted vs who is pending.
     """
     now_ist = datetime.now(IST)
+    now_utc = datetime.utcnow()  # naive UTC for MongoDB queries
     league = db.leagues.find_one({"season": "IPL_2026"})
     if not league:
         return
@@ -580,9 +582,10 @@ def send_submission_reminders(db, state):
     members = list(db.users.find({"_id": {"$in": member_ids}}))
 
     # Find upcoming matches (deadline in next 45 min)
+    # MongoDB stores deadline as naive UTC, so query with naive UTC
     upcoming = list(db.matches.find({
         "status": "upcoming",
-        "deadline": {"$gt": now_ist, "$lt": now_ist + timedelta(minutes=45)}
+        "deadline": {"$gt": now_utc, "$lt": now_utc + timedelta(minutes=45)}
     }))
 
     for match in upcoming:
@@ -591,9 +594,9 @@ def send_submission_reminders(db, state):
         if not deadline:
             continue
 
-        # Make deadline timezone-aware if it isn't
+        # Make deadline timezone-aware — MongoDB stores as naive UTC
         if deadline.tzinfo is None:
-            deadline = deadline.replace(tzinfo=IST)
+            deadline = deadline.replace(tzinfo=timezone.utc).astimezone(IST)
 
         mins_left = (deadline - now_ist).total_seconds() / 60
 
@@ -638,6 +641,171 @@ def send_submission_reminders(db, state):
                 break  # Only send one tier per run
 
 
+# ─── Randomizer: auto-pick teams for users who missed deadline ───
+def generate_random_team(players_pool):
+    """
+    Pick 11 valid players from a pool (playing 22).
+    Constraints: ≤100 credits, 1-4 WK, 3-6 BAT (incl WK), 1-4 AR, 3-6 BOWL, max 7 per franchise.
+    Returns (players_11, captain, vice_captain) or None if impossible.
+    """
+    BUDGET = 100
+    MAX_FRANCHISE = 7
+
+    # Role bounds: (min, max)
+    ROLE_BOUNDS = {"WK": (1, 4), "BAT": (1, 5), "AR": (1, 4), "BOWL": (2, 6)}
+
+    by_role = {}
+    for p in players_pool:
+        r = p.get("role", "BAT")
+        by_role.setdefault(r, []).append(p)
+
+    # Try up to 200 shuffled attempts
+    for _ in range(200):
+        team = []
+        credits_used = 0
+        role_counts = {"WK": 0, "BAT": 0, "AR": 0, "BOWL": 0}
+        franchise_counts = {}
+
+        # First pass: pick minimums per role
+        pool_copy = {r: list(ps) for r, ps in by_role.items()}
+        for r, ps in pool_copy.items():
+            random.shuffle(ps)
+
+        picked_ids = set()
+        for role, (mn, _) in ROLE_BOUNDS.items():
+            available = pool_copy.get(role, [])
+            for p in available:
+                if len(team) >= 11:
+                    break
+                if role_counts[role] >= mn:
+                    break
+                pid = str(p["_id"])
+                if pid in picked_ids:
+                    continue
+                fr = p.get("franchise", "")
+                if franchise_counts.get(fr, 0) >= MAX_FRANCHISE:
+                    continue
+                if credits_used + p.get("credits", 8) > BUDGET:
+                    continue
+                team.append(p)
+                picked_ids.add(pid)
+                credits_used += p.get("credits", 8)
+                role_counts[role] += 1
+                franchise_counts[fr] = franchise_counts.get(fr, 0) + 1
+
+        # Second pass: fill remaining spots from shuffled pool
+        all_remaining = [p for p in players_pool if str(p["_id"]) not in picked_ids]
+        random.shuffle(all_remaining)
+        for p in all_remaining:
+            if len(team) >= 11:
+                break
+            role = p.get("role", "BAT")
+            _, mx = ROLE_BOUNDS.get(role, (0, 6))
+            if role_counts.get(role, 0) >= mx:
+                continue
+            fr = p.get("franchise", "")
+            if franchise_counts.get(fr, 0) >= MAX_FRANCHISE:
+                continue
+            if credits_used + p.get("credits", 8) > BUDGET:
+                continue
+            team.append(p)
+            picked_ids.add(str(p["_id"]))
+            credits_used += p.get("credits", 8)
+            role_counts[role] = role_counts.get(role, 0) + 1
+            franchise_counts[fr] = franchise_counts.get(fr, 0) + 1
+
+        if len(team) != 11:
+            continue
+
+        # Validate WK+BAT count (WK counts as batsman)
+        bat_total = role_counts.get("WK", 0) + role_counts.get("BAT", 0)
+        if bat_total < 3 or bat_total > 6:
+            continue
+
+        # Pick captain and vice-captain
+        random.shuffle(team)
+        captain = team[0]
+        vice_captain = team[1]
+        return team, captain, vice_captain
+
+    return None
+
+
+def auto_generate_missing_teams(db, match):
+    """
+    For a match that has playingXI set, generate random teams for
+    league members who haven't submitted.
+    """
+    match_id = match["_id"]
+    playing_xi = match.get("playingXI", {})
+    team1_ids = playing_xi.get("team1", [])
+    team2_ids = playing_xi.get("team2", [])
+
+    if not team1_ids or not team2_ids:
+        return []
+
+    # Get player docs for the playing 22
+    all_player_ids = list(team1_ids) + list(team2_ids)
+    players_pool = list(db.players.find({"_id": {"$in": all_player_ids}, "isActive": True}))
+
+    if len(players_pool) < 11:
+        print(f"    Randomizer: only {len(players_pool)} players in playing XI, need 11. Skipping.")
+        return []
+
+    # Get league members
+    league = db.leagues.find_one({"season": "IPL_2026"})
+    if not league:
+        return []
+    member_ids = league.get("members", [])
+
+    # Find who already submitted
+    existing = db.fantasyteams.find({"matchId": match_id})
+    submitted_ids = {str(t["userId"]) for t in existing}
+
+    # Generate for missing members
+    auto_picked = []
+    for uid in member_ids:
+        if str(uid) in submitted_ids:
+            continue
+
+        result = generate_random_team(players_pool)
+        if not result:
+            print(f"    Randomizer: could not generate valid team for user {uid}")
+            continue
+
+        team, captain, vice_captain = result
+        doc = {
+            "userId": uid,
+            "matchId": match_id,
+            "players": [p["_id"] for p in team],
+            "captain": captain["_id"],
+            "viceCaptain": vice_captain["_id"],
+            "totalPoints": 0,
+            "isLocked": False,
+            "isAutoGenerated": True,
+            "createdAt": datetime.utcnow(),
+            "updatedAt": datetime.utcnow(),
+        }
+        try:
+            db.fantasyteams.insert_one(doc)
+            user = db.users.find_one({"_id": uid})
+            name = user.get("name", "?") if user else "?"
+            auto_picked.append(name)
+            print(f"    Randomizer: auto-picked team for {name}")
+        except Exception as e:
+            # Duplicate key = already has a team (race condition)
+            print(f"    Randomizer: skip {uid} — {e}")
+
+    if auto_picked:
+        names = ", ".join(auto_picked)
+        send_group(
+            f"\U0001f3b2 *Auto-picked teams* for: {names}\n\n"
+            f"Missed the deadline — random team from playing XI assigned!"
+        )
+
+    return auto_picked
+
+
 # ─── Main ───
 def main():
     now = datetime.now(IST)
@@ -667,6 +835,24 @@ def main():
             print("  No live IPL matches")
         else:
             print(f"  Found {len(matches)} match(es)")
+
+        # 3a. Auto-generate teams for matches that just went live with playingXI
+        try:
+            live_matches = list(db.matches.find({
+                "status": {"$in": ["live", "toss_done"]},
+                "playingXI.team1": {"$exists": True, "$ne": []},
+                "playingXI.team2": {"$exists": True, "$ne": []},
+            }))
+            for lm in live_matches:
+                rando_key = f"{lm['_id']}_randomized"
+                if state.get("last_dm", {}).get(rando_key):
+                    continue
+                auto_picked = auto_generate_missing_teams(db, lm)
+                if auto_picked is not None:
+                    # Mark as done even if 0 picks (so we don't retry)
+                    state.setdefault("last_dm", {})[rando_key] = True
+        except Exception as e:
+            print(f"  Randomizer error: {e}")
 
         for m in matches:
             cb_id = m["cb_id"]
