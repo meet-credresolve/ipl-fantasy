@@ -25,7 +25,7 @@ import { AuthService } from '../../../core/services/auth.service';
       <mat-form-field appearance="fill">
         <mat-label>Email</mat-label>
         <input matInput type="email" formControlName="email" autocomplete="email" />
-        <mat-icon matSuffix style="color: var(--color-text-subtle);">email</mat-icon>
+        <mat-icon matSuffix style="color: var(--color-text-muted);">email</mat-icon>
         @if (form.get('email')?.invalid && form.get('email')?.touched) {
           <mat-error>Valid email required</mat-error>
         }
@@ -36,7 +36,7 @@ import { AuthService } from '../../../core/services/auth.service';
         <input matInput [type]="showPassword() ? 'text' : 'password'"
                formControlName="password" autocomplete="current-password" />
         <button type="button" mat-icon-button matSuffix (click)="showPassword.update(v => !v)"
-                style="color: var(--color-text-subtle);">
+                style="color: var(--color-text-muted);">
           <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
         </button>
         @if (form.get('password')?.invalid && form.get('password')?.touched) {

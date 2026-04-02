@@ -7,6 +7,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { AuthService } from '../../../core/services/auth.service';
+import { ThemeService } from '../../../core/services/theme.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -51,7 +52,7 @@ import { AuthService } from '../../../core/services/auth.service';
       <mat-sidenav-content style="background: var(--color-base);">
         <!-- Top navbar -->
         <header class="sticky top-0 z-50 flex items-center gap-3 px-4 md:px-6 h-16"
-                style="background: rgba(13, 11, 26, 0.85); backdrop-filter: blur(20px) saturate(1.5);
+                style="background: var(--color-base-translucent); backdrop-filter: blur(20px) saturate(1.5);
                        -webkit-backdrop-filter: blur(20px) saturate(1.5);
                        border-bottom: 1px solid var(--color-border);">
           <button mat-icon-button class="md:hidden" (click)="sidenav.toggle()"
@@ -83,6 +84,13 @@ import { AuthService } from '../../../core/services/auth.service';
           </nav>
 
           <span class="flex-1"></span>
+
+          <!-- Theme toggle -->
+          <button mat-icon-button (click)="themeService.toggle()"
+                  style="color: var(--color-text-muted);"
+                  [attr.aria-label]="'Switch to ' + (themeService.theme() === 'dark' ? 'light' : 'dark') + ' theme'">
+            <mat-icon>{{ themeService.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+          </button>
 
           <!-- User menu -->
           <button mat-icon-button [matMenuTriggerFor]="userMenu"
@@ -131,6 +139,7 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class MainLayoutComponent {
   readonly auth = inject(AuthService);
+  readonly themeService = inject(ThemeService);
 
   readonly navItems = [
     { route: '/dashboard', icon: 'home', label: 'Dashboard' },

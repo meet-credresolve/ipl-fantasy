@@ -29,7 +29,7 @@ import { AuthService } from '../../../core/services/auth.service';
         <mat-label>Invite Code</mat-label>
         <input matInput formControlName="inviteCode" placeholder="e.g. A3F9C1"
                class="uppercase tracking-widest text-lg font-mono" maxlength="6" />
-        <mat-icon matSuffix style="color: var(--color-text-subtle);">vpn_key</mat-icon>
+        <mat-icon matSuffix style="color: var(--color-text-muted);">vpn_key</mat-icon>
       </mat-form-field>
 
       @if (successMsg()) {

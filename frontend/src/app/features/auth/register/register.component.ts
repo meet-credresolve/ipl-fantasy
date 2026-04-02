@@ -28,19 +28,19 @@ import { AuthService } from '../../../core/services/auth.service';
       <mat-form-field appearance="fill">
         <mat-label>Display Name</mat-label>
         <input matInput formControlName="name" autocomplete="name" />
-        <mat-icon matSuffix style="color: var(--color-text-subtle);">person</mat-icon>
+        <mat-icon matSuffix style="color: var(--color-text-muted);">person</mat-icon>
       </mat-form-field>
 
       <mat-form-field appearance="fill">
         <mat-label>Email</mat-label>
         <input matInput type="email" formControlName="email" autocomplete="email" />
-        <mat-icon matSuffix style="color: var(--color-text-subtle);">email</mat-icon>
+        <mat-icon matSuffix style="color: var(--color-text-muted);">email</mat-icon>
       </mat-form-field>
 
       <mat-form-field appearance="fill">
         <mat-label>WhatsApp Number</mat-label>
         <input matInput formControlName="phone" autocomplete="tel" placeholder="e.g. 918320065658" />
-        <mat-icon matSuffix style="color: var(--color-text-subtle);">phone</mat-icon>
+        <mat-icon matSuffix style="color: var(--color-text-muted);">phone</mat-icon>
         <mat-hint>With country code, no + or spaces</mat-hint>
       </mat-form-field>
 
@@ -49,7 +49,7 @@ import { AuthService } from '../../../core/services/auth.service';
         <input matInput [type]="showPassword() ? 'text' : 'password'"
                formControlName="password" autocomplete="new-password" />
         <button type="button" mat-icon-button matSuffix (click)="showPassword.update(v => !v)"
-                style="color: var(--color-text-subtle);">
+                style="color: var(--color-text-muted);">
           <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
         </button>
         @if (form.get('password')?.invalid && form.get('password')?.touched) {

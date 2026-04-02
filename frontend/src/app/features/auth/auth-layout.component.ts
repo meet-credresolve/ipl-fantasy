@@ -1,14 +1,24 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-auth-layout',
   standalone: true,
-  imports: [RouterOutlet, MatIconModule],
+  imports: [RouterOutlet, MatIconModule, MatButtonModule],
   template: `
-    <div class="min-h-screen flex items-center justify-center p-4"
+    <div class="min-h-screen flex items-center justify-center p-4 relative"
          style="background: var(--color-base);">
+      <!-- Theme toggle (top-right) -->
+      <button mat-icon-button (click)="themeService.toggle()"
+              class="absolute top-4 right-4"
+              style="color: var(--color-text-muted);"
+              [attr.aria-label]="'Switch to ' + (themeService.theme() === 'dark' ? 'light' : 'dark') + ' theme'">
+        <mat-icon>{{ themeService.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+
       <div class="w-full max-w-md fade-up">
         <div class="text-center mb-8">
           <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl mb-4"
@@ -29,4 +39,6 @@ import { MatIconModule } from '@angular/material/icon';
     </div>
   `,
 })
-export class AuthLayoutComponent {}
+export class AuthLayoutComponent {
+  readonly themeService = inject(ThemeService);
+}
