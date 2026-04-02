@@ -17,3 +17,6 @@ dist/
 
 # OS
 Thumbs.db
+
+# Temporary files
+replacements.txt
