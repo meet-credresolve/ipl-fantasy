@@ -18,9 +18,18 @@ from pymongo import MongoClient
 from bson import ObjectId
 
 # ─── Config ───
-MONGO_URI = "mongodb+srv://dmeetn2211_db_user:LoYQHcAHht8DRnjq@cluster0.jehizto.mongodb.net/test?retryWrites=true&w=majority&appName=Cluster0"
+import os
+from pathlib import Path
+# Load .env if exists (never hardcode credentials)
+_env_path = Path(__file__).parent / '.env'
+if _env_path.exists():
+    for line in _env_path.read_text().splitlines():
+        if '=' in line and not line.startswith('#'):
+            k, v = line.split('=', 1)
+            os.environ.setdefault(k.strip(), v.strip())
+MONGO_URI = os.environ.get('MONGO_URI', 'SET_MONGO_URI_IN_ENV')
 WA_URL = "https://wa.dotsai.cloud/api/send/text"
-WA_TOKEN = "***REMOVED***"
+WA_TOKEN = os.environ.get('WA_TOKEN', 'SET_WA_TOKEN_IN_ENV')
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 IST = timezone(timedelta(hours=5, minutes=30))
 DM_INTERVAL_MIN = 15
