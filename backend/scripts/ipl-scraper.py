@@ -33,6 +33,7 @@ MONGO_URI = os.environ.get('MONGO_URI', 'SET_MONGO_URI_IN_ENV')
 WA_URL = "https://wa.dotsai.cloud/api/send/text"
 WA_MEDIA_URL = "https://wa.dotsai.cloud/api/send/media"
 WA_TOKEN = os.environ.get('WA_TOKEN', os.environ.get('WHATSAPP_API_TOKEN', 'SET_WA_TOKEN_IN_ENV'))
+APP_BASE_URL = os.environ.get('APP_BASE_URL', 'https://ipl-fantasy-live.vercel.app').rstrip('/')
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 IST = timezone(timedelta(hours=5, minutes=30))
 DM_INTERVAL_MIN = 3
@@ -977,7 +978,7 @@ def send_whatsapp_updates(db, match, team_scores, state):
         msg = (f"\U0001f3c6 *{match['team1']} vs {match['team2']}* — Match Complete!\n\n"
                f"{podium}\n\n"
                f"\U0001f4b0 Winner takes ₹{len(all_scores) * 60} pot!\n"
-               f"Full breakdown in the app \U0001f449 https://ipl.bugzy500.com")
+               f"Full breakdown in the app \U0001f449 {APP_BASE_URL}")
         send_group(msg)
         # Mark as final so we never message again for this match
         state.setdefault("last_dm", {})[final_key] = True
@@ -1062,7 +1063,7 @@ def send_submission_reminders(db, state):
                        f"*{mins_display} min* to deadline!\n\n"
                        f"\u2705 *Submitted:* {submitted_text}\n"
                        f"\u274c *Pending:* {pending_text}\n\n"
-                       f"Lock your team now! \U0001f449 https://ipl-fantasy-zeta.vercel.app")
+                       f"Lock your team now! \U0001f449 {APP_BASE_URL}")
 
                 send_group(msg)
                 state.setdefault("last_dm", {})[tier_key] = True
@@ -1399,7 +1400,7 @@ def send_squad_announcement(db, match, state):
         if edit_alerts:
             msg_parts.append("\u2757 *Edit your team — these players are NOT playing:*\n")
             msg_parts.extend(edit_alerts)
-            msg_parts.append(f"\n\U0001f449 https://ipl-fantasy-zeta.vercel.app/")
+            msg_parts.append(f"\n\U0001f449 {APP_BASE_URL}/")
         else:
             msg_parts.append("\u2705 All submitted teams have only playing XI players!")
 
