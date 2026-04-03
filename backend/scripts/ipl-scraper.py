@@ -262,60 +262,142 @@ AVATAR_BASE_URL = "https://dotsai.in/spl-avatars"
 
 GIFS = {
     "celebration": [
-        "https://media3.giphy.com/media/1rdLseLhDMiBnumJzM/giphy.gif",
-        "https://media4.giphy.com/media/pCJWxPzAbGHHIWHoep/giphy.gif",
-        "https://media0.giphy.com/media/E5GdvnFmutdwQhZc22/giphy.gif",
-        "https://media3.giphy.com/media/SqoTSUxfRR1PPTXMPv/giphy.gif",
-        "https://media0.giphy.com/media/qia2rxxWQ6B01pOf10/giphy.gif",
-        "https://media1.giphy.com/media/5wgdVaOwGyWzNxoYKD/giphy.gif",
+        "https://media.giphy.com/media/1rdLseLhDMiBnumJzM/giphy.gif",
+        "https://media.giphy.com/media/pCJWxPzAbGHHIWHoep/giphy.gif",
+        "https://media.giphy.com/media/E5GdvnFmutdwQhZc22/giphy.gif",
+        "https://media.giphy.com/media/SqoTSUxfRR1PPTXMPv/giphy.gif",
+        "https://media.giphy.com/media/qia2rxxWQ6B01pOf10/giphy.gif",
+        "https://media.giphy.com/media/5wgdVaOwGyWzNxoYKD/giphy.gif",
+        "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",  # the rock clapping
+        "https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.gif",  # leo dicaprio toast
     ],
     "wicket": [
-        "https://media4.giphy.com/media/UMzYGpUkzuwMlT2mXL/giphy.gif",
-        "https://media1.giphy.com/media/xW66oX2jHcCpp49uWs/giphy.gif",
-        "https://media3.giphy.com/media/THIImhwN2fV2q8EOvq/giphy.gif",
-        "https://media2.giphy.com/media/xB68elnmZURlOlOUZ1/giphy.gif",
-        "https://media4.giphy.com/media/2CUJFvoRXDrUeG1mOS/giphy.gif",
+        "https://media.giphy.com/media/UMzYGpUkzuwMlT2mXL/giphy.gif",
+        "https://media.giphy.com/media/xW66oX2jHcCpp49uWs/giphy.gif",
+        "https://media.giphy.com/media/THIImhwN2fV2q8EOvq/giphy.gif",
+        "https://media.giphy.com/media/xB68elnmZURlOlOUZ1/giphy.gif",
+        "https://media.giphy.com/media/2CUJFvoRXDrUeG1mOS/giphy.gif",
+        "https://media.giphy.com/media/ko8zXh01jZPE4/giphy.gif",
     ],
     "drama": [
-        "https://media1.giphy.com/media/e8K0OMxMIZ5j5AxyiA/giphy.gif",
-        "https://media0.giphy.com/media/ItOC6bcYSUE3QdQPwU/giphy.gif",
-        "https://media3.giphy.com/media/NvlwExVCntLTqXVg7X/giphy.gif",
-        "https://media1.giphy.com/media/evVKsrjZEqVVWvE2VR/giphy.gif",
-        "https://media1.giphy.com/media/ksioubEKq0ufcB4z1S/giphy.gif",
+        "https://media.giphy.com/media/e8K0OMxMIZ5j5AxyiA/giphy.gif",
+        "https://media.giphy.com/media/ItOC6bcYSUE3QdQPwU/giphy.gif",
+        "https://media.giphy.com/media/NvlwExVCntLTqXVg7X/giphy.gif",
+        "https://media.giphy.com/media/evVKsrjZEqVVWvE2VR/giphy.gif",
+        "https://media.giphy.com/media/ksioubEKq0ufcB4z1S/giphy.gif",
+        "https://media.giphy.com/media/tyqcJoNjNv0Fq/giphy.gif",
+        "https://media.giphy.com/media/uWzS6ZLs0AaVOJlgRd/giphy.gif",
     ],
+    "hype": [
+        "https://media.giphy.com/media/b1o4elHO8o03C/giphy.gif",
+        "https://media.giphy.com/media/xUySTUZ8A2RJBQitwI/giphy.gif",
+        "https://media.giphy.com/media/11sBLVxIRvnAwt/giphy.gif",
+    ]
+}
+
+PERSONA_GIFS = {
+    "prashast": [ # F1
+        "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",
+        "https://media.giphy.com/media/13HgwGsXF0aiGY/giphy.gif",
+        "https://media.giphy.com/media/j1pwjH621u0Y9B7rF1/giphy.gif",
+    ],
+    "vaishali": [ # Taylor Swift
+        "https://media.giphy.com/media/rlQgaG1FkcL16/giphy.gif",
+        "https://media.giphy.com/media/ZqAm1L2K8G2uA/giphy.gif",
+        "https://media.giphy.com/media/bFQAwUK9WJjws/giphy.gif",
+    ],
+    "avdhesh": [ # Ammy Virk / Punjabi
+        "https://media.giphy.com/media/J0Xy83XFw1oCQo1T52/giphy.gif",
+        "https://media.giphy.com/media/l1IYfwozudAdkuZk4/giphy.gif",
+        "https://media.giphy.com/media/B2eVMXofKofXG/giphy.gif",
+    ],
+    "shubham": [ # Zakir Khan / Writing
+        "https://media.giphy.com/media/xT1R9B484e5qFpD2OQ/giphy.gif",
+        "https://media.giphy.com/media/3o7WIurliuc2F9H10A/giphy.gif",
+    ],
+    "jayesh": [ # Rohit/Kohli
+        "https://media.giphy.com/media/3o6wrGEE2F8XWn6qE0/giphy.gif",
+        "https://media.giphy.com/media/xT1R9D7UebkL4b9UeQ/giphy.gif",
+    ],
+    "arpit": [ # Rohit/Kohli
+        "https://media.giphy.com/media/l1J9I5KFN8zwGG4k8/giphy.gif",
+        "https://media.giphy.com/media/3owzVY37a1H3gA98d2/giphy.gif",
+    ],
+    "mannu": [ # Full of enthu 
+        "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif",
+        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",
+    ],
+    "navneet": [ # If Navneet is Mannu
+        "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif",
+        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",
+    ],
+    "nishant": [ # Professional
+        "https://media.giphy.com/media/b5L1Lt3k4hGNDZWVIw/giphy.gif",
+        "https://media.giphy.com/media/Lndtxw3ztLhNC/giphy.gif",
+    ]
 }
 
 # All GIFs in one flat pool for truly random picks
-ALL_GIFS = GIFS["celebration"] + GIFS["wicket"] + GIFS["drama"]
+ALL_GIFS = []
+for cat in GIFS.values():
+    ALL_GIFS.extend(cat)
 
+def get_unseen_media(pool, state):
+    used = state.setdefault("used_media", []) if state is not None else []
+    unseen = [u for u in pool if u not in used]
+    if not unseen:
+        unseen = pool
+        if state is not None:
+            state["used_media"] = state["used_media"][len(state["used_media"])//2:]
+    choice = random.choice(unseen)
+    if state is not None:
+        state["used_media"].append(choice)
+        if len(state["used_media"]) > 200:
+            state["used_media"] = state["used_media"][-100:]
+    return choice
 
-def pick_media(category, user_id=None):
+def get_persona_media(user_name, state):
+    if not user_name:
+        return None
+    name_lower = user_name.lower()
+    for persona, urls in PERSONA_GIFS.items():
+        if persona in name_lower:
+            return get_unseen_media(urls, state)
+    return None
+
+def pick_media(category, user_id=None, user_name=None, state=None):
     """
-    Pick media for a milestone/takeover — returns (url, is_avatar).
+    Pick media for a milestone/takeover with anti-repeat state awareness.
     Mix strategy:
-      - 40% chance: personalized cartoon avatar (if user_id available)
-      - 30% chance: category-specific GIF
-      - 30% chance: random GIF from full pool
-    This keeps it unpredictable — sometimes avatar, sometimes funny GIF.
+      - 30% chance: persona-based generic GIF (if applicable)
+      - 30% chance: personalized cartoon avatar (if user_id available)
+      - 20% chance: category-specific GIF
+      - 20% chance: random GIF from full pool
     """
     roll = random.random()
 
-    # 40% avatar (only if user_id exists)
-    if user_id and roll < 0.4:
+    # 30% persona specific (if user_name matches)
+    if user_name and roll < 0.3:
+        persona_url = get_persona_media(user_name, state)
+        if persona_url:
+            return persona_url, False
+
+    # 30% avatar (only if user_id exists)
+    if user_id and roll < 0.6:
         return f"{AVATAR_BASE_URL}/{user_id}.png", True
 
-    # 30% category-specific
-    if roll < 0.7:
+    # 20% category-specific
+    if roll < 0.8:
         pool = GIFS.get(category, ALL_GIFS)
-        return random.choice(pool), False
+        return get_unseen_media(pool, state), False
 
-    # 30% any random GIF
-    return random.choice(ALL_GIFS), False
+    # 20% any random GIF
+    return get_unseen_media(ALL_GIFS, state), False
 
 
-def send_milestone_media(msg, category="celebration", user_id=None):
+def send_milestone_media(msg, category="celebration", user_id=None, user_name=None, state=None):
     """Send a milestone message with mixed media — GIF, avatar, or text fallback."""
-    url, is_avatar = pick_media(category, user_id)
+    url, is_avatar = pick_media(category, user_id, user_name, state)
     send_group_gif(url, msg)
 
 
@@ -359,7 +441,7 @@ def detect_milestones(db, match, scorecard, state):
                     msg = (f"\U0001f4a5 *FIFTY!* {player_name} \U0001f525\n\n"
                            f"{runs_scored} ({balls}) | {fours} fours, {sixes} sixes | SR {sr}\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    send_milestone_media(msg, "celebration")
+                    send_milestone_media(msg, "celebration", state=state)
                     new_milestones.append(key)
 
             # Century (100)
@@ -371,7 +453,7 @@ def detect_milestones(db, match, scorecard, state):
                            f"{runs_scored} ({balls}) | {fours} fours, {sixes} sixes | SR {sr}\n\n"
                            f"WHAT. A. KNOCK. \U0001f525\U0001f525\U0001f525\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    send_milestone_media(msg, "celebration")
+                    send_milestone_media(msg, "celebration", state=state)
                     new_milestones.append(key)
 
             # 150 (special)
@@ -381,7 +463,7 @@ def detect_milestones(db, match, scorecard, state):
                     msg = (f"\U0001f92f *150 UP!* {player_name} is UNSTOPPABLE!\n\n"
                            f"{runs_scored} ({balls}) | {fours}x4, {sixes}x6\n\n"
                            f"This is MADNESS \U0001f525\U0001f525\U0001f525")
-                    send_milestone_media(msg, "celebration")
+                    send_milestone_media(msg, "celebration", state=state)
                     new_milestones.append(key)
 
         # ── Bowling milestones ──
@@ -399,7 +481,7 @@ def detect_milestones(db, match, scorecard, state):
                     msg = (f"\U0001f3af *{wk} WICKETS!* {bowler_name} is on fire!\n\n"
                            f"{wk}/{bowl_runs} ({bowl_overs} ov) | Econ {econ}\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    send_milestone_media(msg, "wicket")
+                    send_milestone_media(msg, "wicket", state=state)
                     new_milestones.append(key)
 
             # 5-wicket haul (FIFER!)
@@ -410,7 +492,7 @@ def detect_milestones(db, match, scorecard, state):
                            f"{wk}/{bowl_runs} ({bowl_overs} ov) | Econ {econ}\n\n"
                            f"ABSOLUTE DESTRUCTION! \U0001f4a3\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    send_milestone_media(msg, "wicket")
+                    send_milestone_media(msg, "wicket", state=state)
                     new_milestones.append(key)
 
             # Maiden over
@@ -420,7 +502,7 @@ def detect_milestones(db, match, scorecard, state):
                 if key not in sent_milestones:
                     msg = (f"\U0001f6e1\ufe0f *MAIDEN OVER!* {bowler_name}\n\n"
                            f"Dot dot dot dot dot dot! \U0001f525 Economy: {econ}")
-                    send_milestone_media(msg, "wicket")
+                    send_milestone_media(msg, "wicket", state=state)
                     new_milestones.append(key)
 
         # ── Team score milestones ──
@@ -430,7 +512,7 @@ def detect_milestones(db, match, scorecard, state):
                 if key not in sent_milestones:
                     msg = (f"\U0001f4ca *{target} UP!* {bat_team} — {runs}/{wickets} ({overs} ov)\n\n"
                            f"{'Run rate: ' + str(round(runs / overs, 2)) + ' RPO' if overs > 0 else ''}")
-                    send_milestone_media(msg, "celebration")
+                    send_milestone_media(msg, "celebration", state=state)
                     new_milestones.append(key)
 
         # ── Wicket alerts (new dismissals) ──
@@ -447,14 +529,14 @@ def detect_milestones(db, match, scorecard, state):
                         msg = (f"\u274c *WICKET!* {player_name} — {runs_scored} ({balls})\n"
                                f"{out_desc}\n\n"
                                f"\U0001f4ca {' | '.join(innings_summary)}")
-                        send_milestone_media(msg, "wicket")
+                        send_milestone_media(msg, "wicket", state=state)
                         new_milestones.append(key)
                     elif runs_scored < 5:
                         # Cheap dismissal — drama!
                         msg = (f"\U0001f480 *OUT!* {player_name} gone for {runs_scored} ({balls})\n"
                                f"{out_desc}\n\n"
                                f"\U0001f4ca {' | '.join(innings_summary)}")
-                        send_milestone_media(msg, "drama")
+                        send_milestone_media(msg, "drama", state=state)
                         new_milestones.append(key)
 
     # ── Innings break ──
@@ -471,7 +553,7 @@ def detect_milestones(db, match, scorecard, state):
                        f"({first_score.get('overs', 0)} ov)\n\n"
                        f"\U0001f3af *Target: {target}*\n\n"
                        f"Second innings coming up! \U0001f525")
-                send_milestone_media(msg, "drama")
+                send_milestone_media(msg, "drama", state=state)
                 new_milestones.append(key)
 
     # Save milestones to state
@@ -990,14 +1072,12 @@ def detect_takeovers(db, match, team_scores, state):
                f"\U0001f525 The race is ON!")
 
         # Tiered media based on rank reached:
-        #   1st-2nd: solid celebration GIF
-        #   3rd: normal random GIF
         rank = to["cur_rank"]
         takeover_mentions = dedupe_mentions([to.get("phone")])
-        if rank <= 2:
-            send_group_gif(random.choice(GIFS["celebration"]), msg, mentions=takeover_mentions)
-        elif rank == 3:
-            send_group_gif(random.choice(ALL_GIFS), msg, mentions=takeover_mentions)
+        if rank <= 3:
+            cat = "celebration" if rank <= 2 else "hype"
+            url, _ = pick_media(cat, user_id=to.get("userId"), user_name=to["name"], state=state)
+            send_group_gif(url, msg, mentions=takeover_mentions)
         else:
             send_group(msg, mentions=takeover_mentions)
         sent_takeovers.add(dedup)
