@@ -17,6 +17,7 @@ import requests
 from datetime import datetime, timezone, timedelta
 from pymongo import MongoClient
 from bson import ObjectId
+from infinity_max_brain import auto_build_and_submit, build_team_summary_message, INFINITY_MAX_USER_ID
 
 # ─── Config ───
 import os
@@ -34,7 +35,7 @@ WA_MEDIA_URL = "https://wa.dotsai.cloud/api/send/media"
 WA_TOKEN = os.environ.get('WA_TOKEN', os.environ.get('WHATSAPP_API_TOKEN', 'SET_WA_TOKEN_IN_ENV'))
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 IST = timezone(timedelta(hours=5, minutes=30))
-DM_INTERVAL_MIN = 15
+DM_INTERVAL_MIN = 3
 STATE_FILE = "/opt/services/ipl-scraper/state.json"
 
 # WhatsApp Group — Saanp Premier League
@@ -191,29 +192,67 @@ def send_group_gif(gif_url, caption=""):
         return False
 
 
-# ─── Cricket Milestone GIFs (Giphy direct URLs — verified working) ───
-MILESTONE_GIFS = {
-    "fifty": [
-        "https://media3.giphy.com/media/1rdLseLhDMiBnumJzM/giphy.gif",  # cricket celebration
-        "https://media4.giphy.com/media/pCJWxPzAbGHHIWHoep/giphy.gif",  # cricket clap
-    ],
-    "century": [
-        "https://media0.giphy.com/media/E5GdvnFmutdwQhZc22/giphy.gif",  # big celebration
-        "https://media3.giphy.com/media/SqoTSUxfRR1PPTXMPv/giphy.gif",  # epic cricket
+# ─── Media Pool (all verified 200 OK) ───
+# Variety is king: GIFs, avatars, memes — random mix keeps group hyped
+AVATAR_BASE_URL = "https://dotsai.in/spl-avatars"
+
+GIFS = {
+    "celebration": [
+        "https://media3.giphy.com/media/1rdLseLhDMiBnumJzM/giphy.gif",
+        "https://media4.giphy.com/media/pCJWxPzAbGHHIWHoep/giphy.gif",
+        "https://media0.giphy.com/media/E5GdvnFmutdwQhZc22/giphy.gif",
+        "https://media3.giphy.com/media/SqoTSUxfRR1PPTXMPv/giphy.gif",
+        "https://media0.giphy.com/media/qia2rxxWQ6B01pOf10/giphy.gif",
+        "https://media1.giphy.com/media/5wgdVaOwGyWzNxoYKD/giphy.gif",
     ],
     "wicket": [
-        "https://media4.giphy.com/media/UMzYGpUkzuwMlT2mXL/giphy.gif",  # ipl wicket
-        "https://media1.giphy.com/media/xW66oX2jHcCpp49uWs/giphy.gif",  # cricket bowling
+        "https://media4.giphy.com/media/UMzYGpUkzuwMlT2mXL/giphy.gif",
+        "https://media1.giphy.com/media/xW66oX2jHcCpp49uWs/giphy.gif",
+        "https://media3.giphy.com/media/THIImhwN2fV2q8EOvq/giphy.gif",
+        "https://media2.giphy.com/media/xB68elnmZURlOlOUZ1/giphy.gif",
+        "https://media4.giphy.com/media/2CUJFvoRXDrUeG1mOS/giphy.gif",
     ],
-    "big_wicket": [
-        "https://media3.giphy.com/media/NvlwExVCntLTqXVg7X/giphy.gif",  # big celebration
-        "https://media1.giphy.com/media/5wgdVaOwGyWzNxoYKD/giphy.gif",  # ipl hype
-    ],
-    "takeover": [
-        "https://media1.giphy.com/media/e8K0OMxMIZ5j5AxyiA/giphy.gif",  # ipl drama
-        "https://media0.giphy.com/media/ItOC6bcYSUE3QdQPwU/giphy.gif",  # cricket overtake
+    "drama": [
+        "https://media1.giphy.com/media/e8K0OMxMIZ5j5AxyiA/giphy.gif",
+        "https://media0.giphy.com/media/ItOC6bcYSUE3QdQPwU/giphy.gif",
+        "https://media3.giphy.com/media/NvlwExVCntLTqXVg7X/giphy.gif",
+        "https://media1.giphy.com/media/evVKsrjZEqVVWvE2VR/giphy.gif",
+        "https://media1.giphy.com/media/ksioubEKq0ufcB4z1S/giphy.gif",
     ],
 }
+
+# All GIFs in one flat pool for truly random picks
+ALL_GIFS = GIFS["celebration"] + GIFS["wicket"] + GIFS["drama"]
+
+
+def pick_media(category, user_id=None):
+    """
+    Pick media for a milestone/takeover — returns (url, is_avatar).
+    Mix strategy:
+      - 40% chance: personalized cartoon avatar (if user_id available)
+      - 30% chance: category-specific GIF
+      - 30% chance: random GIF from full pool
+    This keeps it unpredictable — sometimes avatar, sometimes funny GIF.
+    """
+    roll = random.random()
+
+    # 40% avatar (only if user_id exists)
+    if user_id and roll < 0.4:
+        return f"{AVATAR_BASE_URL}/{user_id}.png", True
+
+    # 30% category-specific
+    if roll < 0.7:
+        pool = GIFS.get(category, ALL_GIFS)
+        return random.choice(pool), False
+
+    # 30% any random GIF
+    return random.choice(ALL_GIFS), False
+
+
+def send_milestone_media(msg, category="celebration", user_id=None):
+    """Send a milestone message with mixed media — GIF, avatar, or text fallback."""
+    url, is_avatar = pick_media(category, user_id)
+    send_group_gif(url, msg)
 
 
 def detect_milestones(db, match, scorecard, state):
@@ -256,11 +295,7 @@ def detect_milestones(db, match, scorecard, state):
                     msg = (f"\U0001f4a5 *FIFTY!* {player_name} \U0001f525\n\n"
                            f"{runs_scored} ({balls}) | {fours} fours, {sixes} sixes | SR {sr}\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    gifs = MILESTONE_GIFS.get("fifty", [])
-                    if gifs:
-                        send_group_gif(random.choice(gifs), msg)
-                    else:
-                        send_group(msg)
+                    send_milestone_media(msg, "celebration")
                     new_milestones.append(key)
 
             # Century (100)
@@ -272,11 +307,7 @@ def detect_milestones(db, match, scorecard, state):
                            f"{runs_scored} ({balls}) | {fours} fours, {sixes} sixes | SR {sr}\n\n"
                            f"WHAT. A. KNOCK. \U0001f525\U0001f525\U0001f525\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    gifs = MILESTONE_GIFS.get("century", [])
-                    if gifs:
-                        send_group_gif(random.choice(gifs), msg)
-                    else:
-                        send_group(msg)
+                    send_milestone_media(msg, "celebration")
                     new_milestones.append(key)
 
             # 150 (special)
@@ -286,7 +317,7 @@ def detect_milestones(db, match, scorecard, state):
                     msg = (f"\U0001f92f *150 UP!* {player_name} is UNSTOPPABLE!\n\n"
                            f"{runs_scored} ({balls}) | {fours}x4, {sixes}x6\n\n"
                            f"This is MADNESS \U0001f525\U0001f525\U0001f525")
-                    send_group(msg)
+                    send_milestone_media(msg, "celebration")
                     new_milestones.append(key)
 
         # ── Bowling milestones ──
@@ -304,7 +335,7 @@ def detect_milestones(db, match, scorecard, state):
                     msg = (f"\U0001f3af *{wk} WICKETS!* {bowler_name} is on fire!\n\n"
                            f"{wk}/{bowl_runs} ({bowl_overs} ov) | Econ {econ}\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    send_group(msg)
+                    send_milestone_media(msg, "wicket")
                     new_milestones.append(key)
 
             # 5-wicket haul (FIFER!)
@@ -315,7 +346,7 @@ def detect_milestones(db, match, scorecard, state):
                            f"{wk}/{bowl_runs} ({bowl_overs} ov) | Econ {econ}\n\n"
                            f"ABSOLUTE DESTRUCTION! \U0001f4a3\n\n"
                            f"\U0001f4ca {' | '.join(innings_summary)}")
-                    send_group(msg)
+                    send_milestone_media(msg, "wicket")
                     new_milestones.append(key)
 
             # Maiden over
@@ -325,7 +356,7 @@ def detect_milestones(db, match, scorecard, state):
                 if key not in sent_milestones:
                     msg = (f"\U0001f6e1\ufe0f *MAIDEN OVER!* {bowler_name}\n\n"
                            f"Dot dot dot dot dot dot! \U0001f525 Economy: {econ}")
-                    send_group(msg)
+                    send_milestone_media(msg, "wicket")
                     new_milestones.append(key)
 
         # ── Team score milestones ──
@@ -335,7 +366,7 @@ def detect_milestones(db, match, scorecard, state):
                 if key not in sent_milestones:
                     msg = (f"\U0001f4ca *{target} UP!* {bat_team} — {runs}/{wickets} ({overs} ov)\n\n"
                            f"{'Run rate: ' + str(round(runs / overs, 2)) + ' RPO' if overs > 0 else ''}")
-                    send_group(msg)
+                    send_milestone_media(msg, "celebration")
                     new_milestones.append(key)
 
         # ── Wicket alerts (new dismissals) ──
@@ -352,22 +383,14 @@ def detect_milestones(db, match, scorecard, state):
                         msg = (f"\u274c *WICKET!* {player_name} — {runs_scored} ({balls})\n"
                                f"{out_desc}\n\n"
                                f"\U0001f4ca {' | '.join(innings_summary)}")
-                        gifs = MILESTONE_GIFS.get("big_wicket", [])
-                        if gifs:
-                            send_group_gif(random.choice(gifs), msg)
-                        else:
-                            send_group(msg)
+                        send_milestone_media(msg, "wicket")
                         new_milestones.append(key)
                     elif runs_scored < 5:
                         # Cheap dismissal — drama!
                         msg = (f"\U0001f480 *OUT!* {player_name} gone for {runs_scored} ({balls})\n"
                                f"{out_desc}\n\n"
                                f"\U0001f4ca {' | '.join(innings_summary)}")
-                        gifs = MILESTONE_GIFS.get("wicket", [])
-                        if gifs:
-                            send_group_gif(random.choice(gifs), msg)
-                        else:
-                            send_group(msg)
+                        send_milestone_media(msg, "drama")
                         new_milestones.append(key)
 
     # ── Innings break ──
@@ -384,7 +407,7 @@ def detect_milestones(db, match, scorecard, state):
                        f"({first_score.get('overs', 0)} ov)\n\n"
                        f"\U0001f3af *Target: {target}*\n\n"
                        f"Second innings coming up! \U0001f525")
-                send_group(msg)
+                send_milestone_media(msg, "drama")
                 new_milestones.append(key)
 
     # Save milestones to state
@@ -774,6 +797,8 @@ def update_match_scores(db, cb_match_id, scorecard):
 
     # Recalculate fantasy teams
     teams_cursor = list(db.fantasyteams.find({"matchId": match_id}))
+    league = db.leagues.find_one({"season": "IPL_2026"}, {"members": 1})
+    member_id_set = {str(uid) for uid in league.get("members", [])} if league else set()
     team_scores = []
     for team in teams_cursor:
         total = 0.0
@@ -786,7 +811,7 @@ def update_match_scores(db, cb_match_id, scorecard):
         db.fantasyteams.update_one({"_id": team["_id"]}, {"$set": {"totalPoints": total}})
 
         user = db.users.find_one({"_id": team["userId"]})
-        if user:
+        if user and (not member_id_set or str(team["userId"]) in member_id_set):
             team_scores.append({
                 "userId": str(team["userId"]),
                 "userName": user.get("name", "?"),
@@ -894,13 +919,24 @@ def detect_takeovers(db, match, team_scores, state):
                f"{reason}\n\n"
                f"\U0001f525 The race is ON!")
 
-        # Use personalized cartoon avatar if available, else fallback to generic GIF
-        avatar_url = f"https://dotsai.in/spl-avatars/{to.get('userId', '')}.png"
-        if to.get("userId"):
-            send_group_gif(avatar_url, msg)
+        # Tiered media based on rank reached:
+        #   1st-2nd: solid celebration GIF
+        #   3rd: normal random GIF
+        #   4th-5th: cartoon avatar
+        #   6th+: just text, no media
+        rank = to["cur_rank"]
+        if rank <= 2:
+            send_group_gif(random.choice(GIFS["celebration"]), msg)
+        elif rank == 3:
+            send_group_gif(random.choice(ALL_GIFS), msg)
+        elif rank <= 5:
+            uid = to.get("userId", "")
+            if uid:
+                send_group_gif(f"{AVATAR_BASE_URL}/{uid}.png", msg)
+            else:
+                send_group(msg)
         else:
-            gif = random.choice(MILESTONE_GIFS.get("takeover", MILESTONE_GIFS["fifty"]))
-            send_group_gif(gif, msg)
+            send_group(msg)
         sent_takeovers.add(dedup)
         print(f"    Takeover: {to['name']} #{to['prev_rank']}->{to['cur_rank']} (overtook {overtaken_names})")
 
@@ -930,7 +966,7 @@ def send_whatsapp_updates(db, match, team_scores, state):
 
     is_complete = match.get("status") == "completed"
     all_scores = team_scores  # already sorted desc
-    top = all_scores[:10]  # show all in group
+    top = all_scores[:15]
 
     if is_complete:
         medals = ["\U0001f947", "\U0001f948", "\U0001f949"]
@@ -940,7 +976,7 @@ def send_whatsapp_updates(db, match, team_scores, state):
         )
         msg = (f"\U0001f3c6 *{match['team1']} vs {match['team2']}* — Match Complete!\n\n"
                f"{podium}\n\n"
-               f"\U0001f4b0 Winner takes ₹{len(all_scores) * 100} pot!\n"
+               f"\U0001f4b0 Winner takes ₹{len(all_scores) * 60} pot!\n"
                f"Full breakdown in the app \U0001f449 https://ipl.bugzy500.com")
         send_group(msg)
         # Mark as final so we never message again for this match
@@ -951,7 +987,7 @@ def send_whatsapp_updates(db, match, team_scores, state):
             for i, u in enumerate(top)
         )
         msg = (f"\U0001f4ca *Live — {match['team1']} vs {match['team2']}*\n\n"
-               f"{lb_text}\n\n"
+               f"*Top 15 right now:*\n{lb_text}\n\n"
                f"Points updating every 3 min! \U0001f525")
         send_group(msg)
 
@@ -1021,7 +1057,8 @@ def send_submission_reminders(db, state):
                 urgency = {40: "\u23f0", 20: "\u26a0\ufe0f", 10: "\U0001f6a8"}
                 mins_display = round(mins_left)
 
-                msg = (f"{urgency.get(tier_min, '\u23f0')} *{match['team1']} vs {match['team2']}* — "
+                reminder_emoji = urgency.get(tier_min, "⏰")
+                msg = (f"{reminder_emoji} *{match['team1']} vs {match['team2']}* — "
                        f"*{mins_display} min* to deadline!\n\n"
                        f"\u2705 *Submitted:* {submitted_text}\n"
                        f"\u274c *Pending:* {pending_text}\n\n"
@@ -1210,6 +1247,7 @@ def update_playing_11_best_effort_basis(match: dict, db) -> bool:
     match_id  = match["_id"]
     team1_abbr = match.get("team1", "")
     team2_abbr = match.get("team2", "")
+    cb_match_id = str(match.get("cricApiMatchId", "") or "")
 
     existing_xi = match.get("playingXI", {})
     team1_ids   = existing_xi.get("team1", [])
@@ -1224,7 +1262,8 @@ def update_playing_11_best_effort_basis(match: dict, db) -> bool:
     try:
         from fetch_playing_11 import FetchActualPlaying11
         fetcher = FetchActualPlaying11()
-        xi_names = fetcher.fetch(team1_abbr, team2_abbr, match_id)
+        # Use the Cricbuzz match ID when we have it. The Mongo _id is useless here.
+        xi_names = fetcher.fetch(team1_abbr, team2_abbr, cb_match_id)
         # xi_names = {"team1": ["Player A", ...], "team2": ["Player B", ...]}
     except Exception as e:
         print(f"    PlayingXI fetch error for {team1_abbr} vs {team2_abbr}: {e}")
@@ -1336,7 +1375,7 @@ def send_squad_announcement(db, match, state):
     league = db.leagues.find_one({"season": "IPL_2026"})
     if league:
         member_ids = league.get("members", [])
-        submitted_teams = list(db.fantasyteams.find({"matchId": match_id}))
+        submitted_teams = list(db.fantasyteams.find({"matchId": match_id, "userId": {"$in": member_ids}}))
 
         edit_alerts = []
         for team in submitted_teams:
@@ -1417,6 +1456,27 @@ def main():
         except Exception as e:
             print(f"PlayingXI update error: {e}")
 
+        # 3-pre. Infinity Max early submission — upcoming matches with playingXI and deadline < 60min
+        try:
+            now_utc = datetime.utcnow()
+            upcoming_with_xi = list(db.matches.find({
+                "status": {"$in": ["upcoming", "toss_done"]},
+                "deadline": {"$gt": now_utc, "$lt": now_utc + timedelta(minutes=60)},
+                "playingXI.team1": {"$exists": True, "$ne": []},
+                "playingXI.team2": {"$exists": True, "$ne": []},
+            }))
+            for um in upcoming_with_xi:
+                try:
+                    im_result = auto_build_and_submit(db, um, state)
+                    if im_result:
+                        im_msg = build_team_summary_message(im_result, um)
+                        if im_msg:
+                            send_group(im_msg)
+                except Exception as im_err:
+                    print(f"  Infinity Max early-submit error: {im_err}")
+        except Exception as e:
+            print(f"  Infinity Max early-submit scan error: {e}")
+
         # 3a. For matches with playingXI: send squad announcement + auto-generate missing teams
         try:
             live_matches = list(db.matches.find({
@@ -1431,7 +1491,17 @@ def main():
                 except Exception as e:
                     print(f"  Squad announcement error: {e}")
 
-                # 3a-ii. Auto-generate teams for users who missed deadline
+                # 3a-ii. Infinity Max smart team builder (runs BEFORE randomizer)
+                try:
+                    im_result = auto_build_and_submit(db, lm, state)
+                    if im_result:
+                        im_msg = build_team_summary_message(im_result, lm)
+                        if im_msg:
+                            send_group(im_msg)
+                except Exception as im_err:
+                    print(f"  Infinity Max builder error: {im_err}")
+
+                # 3a-iii. Auto-generate teams for users who missed deadline
                 rando_key = f"{lm['_id']}_randomized"
                 if state.get("last_dm", {}).get(rando_key):
                     continue
