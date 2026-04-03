@@ -299,8 +299,8 @@ export class TeamBuilderComponent implements OnInit {
     if (rc.WK < 1 || rc.WK > 4) return 'Need 1-4 Wicket-Keepers';
     const batTotal = rc.WK + rc.BAT;
     if (batTotal < 3 || batTotal > 6) return 'Need 3-6 Batters (WK included)';
-    if (rc.AR < 1 || rc.AR > 4) return 'Need 1-4 All-Rounders';
-    if (rc.BOWL < 3 || rc.BOWL > 6) return 'Need 3-6 Bowlers';
+    if (rc.AR < 2 || rc.AR > 4) return 'Need 2-4 All-Rounders';
+    if (rc.BOWL < 2 || rc.BOWL > 6) return 'Need 2-6 Bowlers';
 
     const maxFranchise = Math.max(...Object.values(this.franchiseCounts()));
     if (maxFranchise > 7) return 'Max 7 players from one franchise';
