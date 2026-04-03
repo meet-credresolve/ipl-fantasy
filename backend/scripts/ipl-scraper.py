@@ -225,7 +225,7 @@ def send_group_gif(gif_url, caption="", mentions=None):
     try:
         mention_list = dedupe_mentions(mentions)
         # Try as video first so the group sees an actual moving GIF/video, not a flattened still image.
-        payload = {"to": SPL_GROUP_JID, "type": "video", "url": gif_url, "caption": caption}
+        payload = {"to": SPL_GROUP_JID, "type": "video", "url": gif_url, "caption": caption, "gifPlayback": True}
         if mention_list:
             payload["mentions"] = mention_list
         r = requests.post(WA_MEDIA_URL,
@@ -262,78 +262,78 @@ AVATAR_BASE_URL = "https://dotsai.in/spl-avatars"
 
 GIFS = {
     "celebration": [
-        "https://media.giphy.com/media/1rdLseLhDMiBnumJzM/giphy.gif",
-        "https://media.giphy.com/media/pCJWxPzAbGHHIWHoep/giphy.gif",
-        "https://media.giphy.com/media/E5GdvnFmutdwQhZc22/giphy.gif",
-        "https://media.giphy.com/media/SqoTSUxfRR1PPTXMPv/giphy.gif",
-        "https://media.giphy.com/media/qia2rxxWQ6B01pOf10/giphy.gif",
-        "https://media.giphy.com/media/5wgdVaOwGyWzNxoYKD/giphy.gif",
-        "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",  # the rock clapping
-        "https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.gif",  # leo dicaprio toast
+        "https://media.giphy.com/media/1rdLseLhDMiBnumJzM/giphy.mp4",
+        "https://media.giphy.com/media/pCJWxPzAbGHHIWHoep/giphy.mp4",
+        "https://media.giphy.com/media/E5GdvnFmutdwQhZc22/giphy.mp4",
+        "https://media.giphy.com/media/SqoTSUxfRR1PPTXMPv/giphy.mp4",
+        "https://media.giphy.com/media/qia2rxxWQ6B01pOf10/giphy.mp4",
+        "https://media.giphy.com/media/5wgdVaOwGyWzNxoYKD/giphy.mp4",
+        "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.mp4",  # the rock clapping
+        "https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.mp4",  # leo dicaprio toast
     ],
     "wicket": [
-        "https://media.giphy.com/media/UMzYGpUkzuwMlT2mXL/giphy.gif",
-        "https://media.giphy.com/media/xW66oX2jHcCpp49uWs/giphy.gif",
-        "https://media.giphy.com/media/THIImhwN2fV2q8EOvq/giphy.gif",
-        "https://media.giphy.com/media/xB68elnmZURlOlOUZ1/giphy.gif",
-        "https://media.giphy.com/media/2CUJFvoRXDrUeG1mOS/giphy.gif",
-        "https://media.giphy.com/media/ko8zXh01jZPE4/giphy.gif",
+        "https://media.giphy.com/media/UMzYGpUkzuwMlT2mXL/giphy.mp4",
+        "https://media.giphy.com/media/xW66oX2jHcCpp49uWs/giphy.mp4",
+        "https://media.giphy.com/media/THIImhwN2fV2q8EOvq/giphy.mp4",
+        "https://media.giphy.com/media/xB68elnmZURlOlOUZ1/giphy.mp4",
+        "https://media.giphy.com/media/2CUJFvoRXDrUeG1mOS/giphy.mp4",
+        "https://media.giphy.com/media/ko8zXh01jZPE4/giphy.mp4",
     ],
     "drama": [
-        "https://media.giphy.com/media/e8K0OMxMIZ5j5AxyiA/giphy.gif",
-        "https://media.giphy.com/media/ItOC6bcYSUE3QdQPwU/giphy.gif",
-        "https://media.giphy.com/media/NvlwExVCntLTqXVg7X/giphy.gif",
-        "https://media.giphy.com/media/evVKsrjZEqVVWvE2VR/giphy.gif",
-        "https://media.giphy.com/media/ksioubEKq0ufcB4z1S/giphy.gif",
-        "https://media.giphy.com/media/tyqcJoNjNv0Fq/giphy.gif",
-        "https://media.giphy.com/media/uWzS6ZLs0AaVOJlgRd/giphy.gif",
+        "https://media.giphy.com/media/e8K0OMxMIZ5j5AxyiA/giphy.mp4",
+        "https://media.giphy.com/media/ItOC6bcYSUE3QdQPwU/giphy.mp4",
+        "https://media.giphy.com/media/NvlwExVCntLTqXVg7X/giphy.mp4",
+        "https://media.giphy.com/media/evVKsrjZEqVVWvE2VR/giphy.mp4",
+        "https://media.giphy.com/media/ksioubEKq0ufcB4z1S/giphy.mp4",
+        "https://media.giphy.com/media/tyqcJoNjNv0Fq/giphy.mp4",
+        "https://media.giphy.com/media/uWzS6ZLs0AaVOJlgRd/giphy.mp4",
     ],
     "hype": [
-        "https://media.giphy.com/media/b1o4elHO8o03C/giphy.gif",
-        "https://media.giphy.com/media/xUySTUZ8A2RJBQitwI/giphy.gif",
-        "https://media.giphy.com/media/11sBLVxIRvnAwt/giphy.gif",
+        "https://media.giphy.com/media/b1o4elHO8o03C/giphy.mp4",
+        "https://media.giphy.com/media/xUySTUZ8A2RJBQitwI/giphy.mp4",
+        "https://media.giphy.com/media/11sBLVxIRvnAwt/giphy.mp4",
     ]
 }
 
 PERSONA_GIFS = {
     "prashast": [ # F1
-        "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif",
-        "https://media.giphy.com/media/13HgwGsXF0aiGY/giphy.gif",
-        "https://media.giphy.com/media/j1pwjH621u0Y9B7rF1/giphy.gif",
+        "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.mp4",
+        "https://media.giphy.com/media/13HgwGsXF0aiGY/giphy.mp4",
+        "https://media.giphy.com/media/j1pwjH621u0Y9B7rF1/giphy.mp4",
     ],
     "vaishali": [ # Taylor Swift
-        "https://media.giphy.com/media/rlQgaG1FkcL16/giphy.gif",
-        "https://media.giphy.com/media/ZqAm1L2K8G2uA/giphy.gif",
-        "https://media.giphy.com/media/bFQAwUK9WJjws/giphy.gif",
+        "https://media.giphy.com/media/rlQgaG1FkcL16/giphy.mp4",
+        "https://media.giphy.com/media/ZqAm1L2K8G2uA/giphy.mp4",
+        "https://media.giphy.com/media/bFQAwUK9WJjws/giphy.mp4",
     ],
     "avdhesh": [ # Ammy Virk / Punjabi
-        "https://media.giphy.com/media/J0Xy83XFw1oCQo1T52/giphy.gif",
-        "https://media.giphy.com/media/l1IYfwozudAdkuZk4/giphy.gif",
-        "https://media.giphy.com/media/B2eVMXofKofXG/giphy.gif",
+        "https://media.giphy.com/media/J0Xy83XFw1oCQo1T52/giphy.mp4",
+        "https://media.giphy.com/media/l1IYfwozudAdkuZk4/giphy.mp4",
+        "https://media.giphy.com/media/B2eVMXofKofXG/giphy.mp4",
     ],
     "shubham": [ # Zakir Khan / Writing
-        "https://media.giphy.com/media/xT1R9B484e5qFpD2OQ/giphy.gif",
-        "https://media.giphy.com/media/3o7WIurliuc2F9H10A/giphy.gif",
+        "https://media.giphy.com/media/xT1R9B484e5qFpD2OQ/giphy.mp4",
+        "https://media.giphy.com/media/3o7WIurliuc2F9H10A/giphy.mp4",
     ],
     "jayesh": [ # Rohit/Kohli
-        "https://media.giphy.com/media/3o6wrGEE2F8XWn6qE0/giphy.gif",
-        "https://media.giphy.com/media/xT1R9D7UebkL4b9UeQ/giphy.gif",
+        "https://media.giphy.com/media/3o6wrGEE2F8XWn6qE0/giphy.mp4",
+        "https://media.giphy.com/media/xT1R9D7UebkL4b9UeQ/giphy.mp4",
     ],
     "arpit": [ # Rohit/Kohli
-        "https://media.giphy.com/media/l1J9I5KFN8zwGG4k8/giphy.gif",
-        "https://media.giphy.com/media/3owzVY37a1H3gA98d2/giphy.gif",
+        "https://media.giphy.com/media/l1J9I5KFN8zwGG4k8/giphy.mp4",
+        "https://media.giphy.com/media/3owzVY37a1H3gA98d2/giphy.mp4",
     ],
     "mannu": [ # Full of enthu 
-        "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif",
-        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",
+        "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.mp4",
+        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.mp4",
     ],
     "navneet": [ # If Navneet is Mannu
-        "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif",
-        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",
+        "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.mp4",
+        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.mp4",
     ],
     "nishant": [ # Professional
-        "https://media.giphy.com/media/b5L1Lt3k4hGNDZWVIw/giphy.gif",
-        "https://media.giphy.com/media/Lndtxw3ztLhNC/giphy.gif",
+        "https://media.giphy.com/media/b5L1Lt3k4hGNDZWVIw/giphy.mp4",
+        "https://media.giphy.com/media/Lndtxw3ztLhNC/giphy.mp4",
     ]
 }
 
