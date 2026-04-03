@@ -138,10 +138,76 @@ def send_dm(phone, message):
         return False
 
 
-def send_group(message):
+MENTION_NAME_OVERRIDES = {
+    "Daddy Cool": "Avdhesh",
+    "VVS": "Vaishali",
+    "Jayesh sharma": "Jayesh",
+    "Shubham Sharma": "Shubham",
+    "Arpit Garg": "Arpit",
+    "Meet": "Meet",
+    "Prashast": "Prashast",
+    "Nishant": "Nishant",
+    "Navneet": "Navneet",
+    "Rahul Sharma": "Rahul",
+    "Shashwat": "Shashwat",
+    "Kurja": "Kurja",
+    "IKCyas": "IKCyas",
+    "Infinity Max": "InfinityMax",
+}
+
+
+def normalize_phone(phone):
+    digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
+    return digits if len(digits) >= 10 else None
+
+
+def mention_label(name):
+    label = MENTION_NAME_OVERRIDES.get(name, (name or "Player").strip().split()[0] or "Player")
+    clean = re.sub(r"[^A-Za-z0-9_]+", "", label)
+    return f"@{clean or 'Player'}"
+
+
+def mention_entry(name, phone):
+    normalized = normalize_phone(phone)
+    if normalized:
+        return mention_label(name), normalized
+    return name or "Player", None
+
+
+def render_user_refs(users):
+    labels = []
+    mentions = []
+    for user in users or []:
+        label, phone = mention_entry(user.get("name"), user.get("phone"))
+        labels.append(label)
+        if phone:
+            mentions.append(phone)
+    if not labels:
+        return "", []
+    return ", ".join(labels), dedupe_mentions(mentions)
+
+
+def dedupe_mentions(mentions):
+    seen = set()
+    ordered = []
+    for phone in mentions or []:
+        normalized = normalize_phone(phone)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered.append(normalized)
+    return ordered
+
+
+def send_group(message, mentions=None):
     """Send message to Saanp Premier League group."""
     try:
-        r = requests.post(WA_URL, json={"to": SPL_GROUP_JID, "message": message},
+        payload = {"to": SPL_GROUP_JID, "message": message}
+        mention_list = dedupe_mentions(mentions)
+        if mention_list:
+            payload["mentions"] = mention_list
+
+        r = requests.post(WA_URL, json=payload,
                          headers={"Authorization": f"Bearer {WA_TOKEN}", "Content-Type": "application/json"},
                          timeout=10)
         if r.ok:
@@ -154,20 +220,27 @@ def send_group(message):
         return False
 
 
-def send_group_gif(gif_url, caption=""):
-    """Send a GIF/image to the group with optional caption. Falls back to text if GIF fails."""
+def send_group_gif(gif_url, caption="", mentions=None):
+    """Send media to the group with optional caption. Falls back to text if media fails."""
     try:
-        # Try as image first (works better with .gif URLs)
+        mention_list = dedupe_mentions(mentions)
+        # Try as video first so the group sees an actual moving GIF/video, not a flattened still image.
+        payload = {"to": SPL_GROUP_JID, "type": "video", "url": gif_url, "caption": caption}
+        if mention_list:
+            payload["mentions"] = mention_list
         r = requests.post(WA_MEDIA_URL,
-                         json={"to": SPL_GROUP_JID, "type": "image", "url": gif_url, "caption": caption},
+                         json=payload,
                          headers={"Authorization": f"Bearer {WA_TOKEN}", "Content-Type": "application/json"},
                          timeout=15)
         if r.ok:
             print(f"    Group GIF sent")
             return True
-        # Retry as video
+        # Retry as image if the gateway rejects the media as video.
+        payload = {"to": SPL_GROUP_JID, "type": "image", "url": gif_url, "caption": caption}
+        if mention_list:
+            payload["mentions"] = mention_list
         r2 = requests.post(WA_MEDIA_URL,
-                          json={"to": SPL_GROUP_JID, "type": "video", "url": gif_url, "caption": caption},
+                          json=payload,
                           headers={"Authorization": f"Bearer {WA_TOKEN}", "Content-Type": "application/json"},
                           timeout=15)
         if r2.ok:
@@ -175,11 +248,11 @@ def send_group_gif(gif_url, caption=""):
             return True
         print(f"    Group GIF FAILED: {r.status_code} — falling back to text")
         # Fallback: send as plain text
-        send_group(caption)
+        send_group(caption, mentions=mention_list)
         return False
     except Exception as e:
         print(f"    Group GIF error: {e} — falling back to text")
-        send_group(caption)
+        send_group(caption, mentions=mentions)
         return False
 
 
@@ -829,7 +902,12 @@ def detect_takeovers(db, match, team_scores, state):
     # Build current ranking: {userName: {rank, points, userId}}
     current = {}
     for i, ts in enumerate(team_scores):
-        current[ts["userName"]] = {"rank": i + 1, "points": ts["totalPoints"], "userId": ts.get("userId", "")}
+        current[ts["userName"]] = {
+            "rank": i + 1,
+            "points": ts["totalPoints"],
+            "userId": ts.get("userId", ""),
+            "phone": ts.get("phone", ""),
+        }
 
     # Load previous ranking from state
     prev = state.get("last_dm", {}).get(rankings_key, {})
@@ -864,6 +942,7 @@ def detect_takeovers(db, match, team_scores, state):
                     takeovers.append({
                         "name": name,
                         "userId": cur_info.get("userId", ""),
+                        "phone": cur_info.get("phone", ""),
                         "prev_rank": prev_rank,
                         "cur_rank": cur_rank,
                         "points_gained": points_gained,
@@ -914,12 +993,13 @@ def detect_takeovers(db, match, team_scores, state):
         #   1st-2nd: solid celebration GIF
         #   3rd: normal random GIF
         rank = to["cur_rank"]
+        takeover_mentions = dedupe_mentions([to.get("phone")])
         if rank <= 2:
-            send_group_gif(random.choice(GIFS["celebration"]), msg)
+            send_group_gif(random.choice(GIFS["celebration"]), msg, mentions=takeover_mentions)
         elif rank == 3:
-            send_group_gif(random.choice(ALL_GIFS), msg)
+            send_group_gif(random.choice(ALL_GIFS), msg, mentions=takeover_mentions)
         else:
-            send_group(msg)
+            send_group(msg, mentions=takeover_mentions)
         sent_takeovers.add(dedup)
         print(f"    Takeover: {to['name']} #{to['prev_rank']}->{to['cur_rank']} (overtook {overtaken_names})")
 
@@ -1032,10 +1112,13 @@ def send_submission_reminders(db, state):
                     if str(m["_id"]) in submitted_user_ids:
                         submitted.append(name)
                     else:
-                        pending.append(name)
+                        pending.append({
+                            "name": name,
+                            "phone": m.get("phone", ""),
+                        })
 
                 submitted_text = ", ".join(submitted) if submitted else "Nobody yet!"
-                pending_text = ", ".join(pending) if pending else "All done! \U0001f389"
+                pending_text, pending_mentions = render_user_refs(pending) if pending else ("All done! \U0001f389", [])
 
                 urgency = {40: "\u23f0", 20: "\u26a0\ufe0f", 10: "\U0001f6a8"}
                 mins_display = round(mins_left)
@@ -1047,7 +1130,7 @@ def send_submission_reminders(db, state):
                        f"\u274c *Pending:* {pending_text}\n\n"
                        f"Lock your team now! \U0001f449 {APP_BASE_URL}")
 
-                send_group(msg)
+                send_group(msg, mentions=pending_mentions)
                 state.setdefault("last_dm", {})[tier_key] = True
                 print(f"    Reminder sent: {tier_min}min tier for {match['team1']} vs {match['team2']}")
                 break  # Only send one tier per run
@@ -1199,17 +1282,21 @@ def auto_generate_missing_teams(db, match):
             db.fantasyteams.insert_one(doc)
             user = db.users.find_one({"_id": uid})
             name = user.get("name", "?") if user else "?"
-            auto_picked.append(name)
+            auto_picked.append({
+                "name": name,
+                "phone": user.get("phone", "") if user else "",
+            })
             print(f"    Randomizer: auto-picked team for {name}")
         except Exception as e:
             # Duplicate key = already has a team (race condition)
             print(f"    Randomizer: skip {uid} — {e}")
 
     if auto_picked:
-        names = ", ".join(auto_picked)
+        names, mentions = render_user_refs(auto_picked)
         send_group(
             f"\U0001f3b2 *Auto-picked teams* for: {names}\n\n"
-            f"Missed the deadline — random team from playing XI assigned!"
+            f"Missed the deadline — random team from playing XI assigned!",
+            mentions=mentions,
         )
 
     return auto_picked
@@ -1353,6 +1440,7 @@ def send_squad_announcement(db, match, state):
         f"\U0001f7e0 *{t1_name}:*\n{t1_names}\n",
         f"\U0001f535 *{t2_name}:*\n{t2_names}\n",
     ]
+    alert_mentions = []
 
     # Check submitted teams for non-playing players
     league = db.leagues.find_one({"season": "IPL_2026"})
@@ -1377,7 +1465,10 @@ def send_squad_announcement(db, match, state):
 
             if not_playing:
                 names_str = ", ".join(not_playing)
-                edit_alerts.append(f"\u26a0\ufe0f *{user_name}*: Replace {names_str}")
+                label, phone = mention_entry(user_name, user.get("phone", ""))
+                if phone:
+                    alert_mentions.append(phone)
+                edit_alerts.append(f"\u26a0\ufe0f *{label}*: Replace {names_str}")
 
         if edit_alerts:
             msg_parts.append("\u2757 *Edit your team — these players are NOT playing:*\n")
@@ -1387,7 +1478,7 @@ def send_squad_announcement(db, match, state):
             msg_parts.append("\u2705 All submitted teams have only playing XI players!")
 
     msg = "\n".join(msg_parts)
-    send_group(msg)
+    send_group(msg, mentions=alert_mentions)
     state.setdefault("last_dm", {})[squad_key] = True
     print(f"    Squad announcement sent for {t1_name} vs {t2_name}")
 
