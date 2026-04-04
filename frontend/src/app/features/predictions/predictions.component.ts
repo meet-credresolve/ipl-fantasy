@@ -9,7 +9,7 @@ import { Subscription, interval, switchMap, startWith } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
-import { Match, ForecastResponse, ForecastEntry } from '../../core/models/api.models';
+import { Match, ForecastResponse, ForecastEntry, Prediction } from '../../core/models/api.models';
 
 @Component({
   selector: 'app-predictions',
@@ -61,6 +61,63 @@ import { Match, ForecastResponse, ForecastEntry } from '../../core/models/api.mo
             <span>{{ forecast()!.matchProgress.totalOvers }} total</span>
           </div>
         </div>
+
+        <!-- Win Predictions -->
+        @if (winPredictions().length > 0) {
+          <div class="rounded-xl p-4 space-y-3" style="background: var(--color-surface); border: 1px solid var(--color-border);">
+            <div class="flex items-center gap-2">
+              <mat-icon style="color: var(--color-warning); font-size: 20px; width: 20px; height: 20px;">psychology</mat-icon>
+              <span class="font-semibold text-sm" style="color: var(--color-text);">Win Predictions</span>
+            </div>
+
+            <!-- Prediction Stats -->
+            <div class="flex gap-3 text-center">
+              <div class="flex-1 rounded-lg p-2" style="background: var(--color-surface-alt, #222);">
+                <div class="text-lg font-bold" style="color: var(--color-accent-hover);">{{ predictionStats().team1Count }}</div>
+                <div class="text-xs" style="color: var(--color-text-muted);">{{ predictionStats().team1 }}</div>
+              </div>
+              <div class="flex-1 rounded-lg p-2" style="background: var(--color-surface-alt, #222);">
+                <div class="text-lg font-bold" style="color: var(--color-warning);">{{ predictionStats().team2Count }}</div>
+                <div class="text-xs" style="color: var(--color-text-muted);">{{ predictionStats().team2 }}</div>
+              </div>
+              <div class="flex-1 rounded-lg p-2" style="background: var(--color-surface-alt, #222);">
+                <div class="text-lg font-bold" style="color: var(--color-danger);">{{ predictionStats().superoverCount }}</div>
+                <div class="text-xs" style="color: var(--color-text-muted);">Superover</div>
+              </div>
+            </div>
+
+            <!-- Individual Predictions -->
+            <div class="space-y-1">
+              @for (p of winPredictions(); track p._id) {
+                <div class="flex items-center justify-between py-1.5 px-2 rounded-lg text-sm"
+                     [style.background]="p.userId === currentUserId() ? 'var(--color-accent-muted)' : 'transparent'">
+                  <span style="color: var(--color-text);">{{ getPredictionUserName(p) }}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                          [style.background]="p.predictionType === 'superover' ? 'var(--color-warning)' : 'var(--color-accent)'"
+                          style="color: #000;">
+                      {{ p.predictionType === 'superover' ? 'Superover' : p.predictedWinner }}
+                    </span>
+                    @if (p.isCorrect === true) {
+                      <mat-icon class="text-green-400" style="font-size: 16px; width: 16px; height: 16px;">check_circle</mat-icon>
+                    } @else if (p.isCorrect === false) {
+                      <mat-icon class="text-red-400" style="font-size: 16px; width: 16px; height: 16px;">cancel</mat-icon>
+                    }
+                    @if (p.bonusPoints > 0) {
+                      <span class="text-xs font-bold text-green-400">+{{ p.bonusPoints }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (noPredictionUsers().length > 0) {
+              <div class="text-xs" style="color: var(--color-text-muted);">
+                No prediction: {{ noPredictionUsers().join(', ') }}
+              </div>
+            }
+          </div>
+        }
 
         <!-- Match Predictor -->
         <div>
@@ -174,6 +231,7 @@ export class PredictionsComponent implements OnInit, OnDestroy {
   selectedMatchId = '';
   readonly matches = signal<Match[]>([]);
   readonly forecast = signal<ForecastResponse | null>(null);
+  readonly winPredictions = signal<Prediction[]>([]);
   readonly loading = signal(false);
   readonly error = signal('');
 
@@ -187,6 +245,29 @@ export class PredictionsComponent implements OnInit, OnDestroy {
         return (order[a.status] ?? 9) - (order[b.status] ?? 9);
       })
   );
+
+  readonly predictionStats = computed(() => {
+    const preds = this.winPredictions();
+    const f = this.forecast();
+    const label = f?.matchLabel?.split(' vs ') || ['Team 1', 'Team 2'];
+    return {
+      team1: label[0],
+      team2: label[1],
+      team1Count: preds.filter((p) => p.predictionType === 'winner' && p.predictedWinner === label[0]).length,
+      team2Count: preds.filter((p) => p.predictionType === 'winner' && p.predictedWinner === label[1]).length,
+      superoverCount: preds.filter((p) => p.predictionType === 'superover').length,
+    };
+  });
+
+  readonly noPredictionUsers = computed(() => {
+    const f = this.forecast();
+    const preds = this.winPredictions();
+    if (!f || preds.length === 0) return [];
+    const predictedUserIds = new Set(preds.map((p) => typeof p.userId === 'string' ? p.userId : (p.userId as any)?.id || (p.userId as any)?._id));
+    return f.forecast
+      .filter((entry) => !predictedUserIds.has(entry.userId))
+      .map((entry) => entry.userName);
+  });
 
   readonly matchRanked = computed(() => {
     const f = this.forecast();
@@ -228,11 +309,17 @@ export class PredictionsComponent implements OnInit, OnDestroy {
   private startPolling(matchId: string, status: string) {
     this.pollSub?.unsubscribe();
     this.forecast.set(null);
+    this.winPredictions.set([]);
     this.error.set('');
     this.loading.set(true);
 
+    // Fetch win predictions (only visible after deadline)
+    this.api.getMatchPredictions(matchId).subscribe({
+      next: (preds) => this.winPredictions.set(preds),
+      error: () => this.winPredictions.set([]), // hidden before deadline, ignore error
+    });
+
     if (status === 'live') {
-      // Poll every 30s
       this.pollSub = interval(30_000).pipe(
         startWith(0),
         switchMap(() => this.api.getLeaderboardForecast(matchId)),
@@ -241,12 +328,16 @@ export class PredictionsComponent implements OnInit, OnDestroy {
         error: (err) => { this.error.set(err.error?.message ?? 'Failed to load forecast'); this.loading.set(false); },
       });
     } else {
-      // Single fetch
       this.api.getLeaderboardForecast(matchId).subscribe({
         next: (data) => { this.forecast.set(data); this.loading.set(false); },
         error: (err) => { this.error.set(err.error?.message ?? 'Failed to load forecast'); this.loading.set(false); },
       });
     }
+  }
+
+  getPredictionUserName(p: Prediction): string {
+    if (typeof p.userId === 'string') return p.userId;
+    return (p.userId as any)?.name || 'Unknown';
   }
 
   rankColor(rank: number): string {
