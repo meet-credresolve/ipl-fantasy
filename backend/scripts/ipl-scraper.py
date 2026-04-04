@@ -1714,6 +1714,7 @@ def auto_generate_missing_teams(db, match):
 
     return auto_picked
 
+
 def update_playing_11_best_effort_basis(match: dict, db) -> bool:
     """
     Best-effort: fetch Playing XI from Cricbuzz and write player ObjectIds into

@@ -193,3 +193,27 @@ export interface SeasonInsightsResponse {
   money: MoneyEntry[];
   awardPool?: number;
 }
+
+// ── Forecast / Predictions ───────────────────────────────────────────────────
+export interface ForecastEntry {
+  userId: string;
+  userName: string;
+  currentPoints: number;
+  currentSeasonRank: number;
+  livePoints: number;
+  projectedMatchPoints: number;
+  projectedSeasonTotal: number;
+  projectedRank: number;
+  projectedMatchRank: number;
+  confidence: number;
+  pointRange: { min: number; max: number };
+}
+
+export interface ForecastResponse {
+  matchId: string;
+  matchLabel: string;
+  matchStatus: MatchStatus;
+  forecast: ForecastEntry[];
+  matchProgress: { oversCompleted: number; totalOvers: number; inning: number };
+  generatedAt: string;
+}
