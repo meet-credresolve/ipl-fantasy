@@ -346,23 +346,53 @@ function mapScorecardToPerformances(scorecardData) {
     }
   }
 
+  // ── Fielding name resolution ──
+  // Dismissal strings use partial names ("c Bumrah b Boult") but batting/bowling
+  // sections have full names ("Jasprit Bumrah"). Resolve partial fielding names
+  // to existing full-name entries before creating new orphan entries.
+  const knownNames = Object.keys(playerMap);
+
+  function resolveFielderName(partialName) {
+    // Already an exact key in playerMap
+    if (playerMap[partialName]) return partialName;
+
+    const partial = partialName.toLowerCase().replace(/\s+/g, ' ').trim();
+    const partialParts = partial.split(' ');
+    const partialLast = partialParts[partialParts.length - 1];
+
+    // Try last-name match against known full names
+    const candidates = knownNames.filter((full) => {
+      const fullLower = full.toLowerCase();
+      const fullParts = fullLower.split(' ');
+      const fullLast = fullParts[fullParts.length - 1];
+      if (fullLast !== partialLast) return false;
+      // If partial has a first initial, check it matches
+      if (partialParts.length > 1 && partialParts[0].length <= 2) {
+        return fullParts[0].startsWith(partialParts[0][0]);
+      }
+      return true;
+    });
+
+    return candidates.length === 1 ? candidates[0] : partialName;
+  }
+
   // Process fielding from dismissals
   for (const d of allDismissals) {
     if (d.type === 'caught' && d.catcher) {
-      getOrInit(d.catcher).catches++;
+      getOrInit(resolveFielderName(d.catcher)).catches++;
     }
     if (d.type === 'stumped' && d.keeper) {
-      getOrInit(d.keeper).stumpings++;
+      getOrInit(resolveFielderName(d.keeper)).stumpings++;
     }
     if (d.type === 'runout_direct' && d.fielders) {
-      for (const f of d.fielders) getOrInit(f).runOutDirect++;
+      for (const f of d.fielders) getOrInit(resolveFielderName(f)).runOutDirect++;
     }
     if (d.type === 'runout_indirect' && d.fielders) {
-      for (const f of d.fielders) getOrInit(f).runOutIndirect++;
+      for (const f of d.fielders) getOrInit(resolveFielderName(f)).runOutIndirect++;
     }
     // Count LBW/bowled wickets for the bowler
     if ((d.type === 'lbw' || d.type === 'bowled') && d.bowler) {
-      getOrInit(d.bowler).lbwBowledWickets++;
+      getOrInit(resolveFielderName(d.bowler)).lbwBowledWickets++;
     }
   }
 
