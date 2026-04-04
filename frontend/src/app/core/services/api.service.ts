@@ -12,6 +12,7 @@ import {
   Prediction,
   SeasonInsightsResponse,
   ScoringRulesResponse,
+  ForecastResponse,
 } from '../models/api.models';
 
 /**
@@ -162,5 +163,10 @@ export class ApiService {
 
   getSeasonEndAwards() {
     return this.http.get<any>(`${this.base}/stats/season-awards`);
+  }
+
+  // ── Forecast ──────────────────────────────────────────────────────────────
+  getLeaderboardForecast(matchId: string) {
+    return this.http.get<ForecastResponse>(`${this.base}/forecast/${matchId}`);
   }
 }
