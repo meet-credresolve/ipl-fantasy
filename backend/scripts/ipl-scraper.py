@@ -2123,11 +2123,17 @@ def main():
                 except Exception as e:
                     print(f"  Squad announcement error: {e}")
 
-                # 3a-ii. Auto-shuffle non-playing XI picks (runs AFTER announcement)
-                try:
-                    auto_shuffle_non_playing(db, lm, state)
-                except Exception as shuf_err:
-                    print(f"  AutoShuffle error: {shuf_err}")
+                # 3a-ii. Auto-shuffle non-playing XI picks (ONLY after deadline)
+                deadline = lm.get("deadline") or (lm["scheduledAt"] + timedelta(minutes=30))
+                now_utc = datetime.now(timezone.utc)
+                dl_utc = deadline if deadline.tzinfo else deadline.replace(tzinfo=timezone.utc)
+                if now_utc >= dl_utc:
+                    try:
+                        auto_shuffle_non_playing(db, lm, state)
+                    except Exception as shuf_err:
+                        print(f"  AutoShuffle error: {shuf_err}")
+                else:
+                    print(f"  AutoShuffle skipped — deadline not passed yet")
 
                 # 3a-iii. Infinity Max smart team builder (runs BEFORE randomizer)
                 try:
