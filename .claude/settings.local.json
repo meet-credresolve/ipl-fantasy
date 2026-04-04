@@ -13,7 +13,17 @@
       "Bash(grep -o 'text-2xl' dist/frontend/browser/*.css)",
       "Bash(wc -c dist/frontend/browser/*.css)",
       "WebSearch",
-      "Bash(grep -E \"\\\\.\\(css|js\\)$\")"
+      "Bash(grep -E \"\\\\.\\(css|js\\)$\")",
+      "Bash(git fetch:*)",
+      "Bash(git rebase:*)",
+      "Bash(git stash:*)",
+      "Bash(WA_TOKEN=\"7e5bccd8d3a401dced574a10395d81f035692c94b8c92aa8716da1fa659ec910\" curl -sv \"https://wa.dotsai.cloud/api/groups/120363407548600267@g.us\" -H \"Authorization: Bearer $WA_TOKEN\")",
+      "Bash(scp /Users/meetdeshani/Desktop/ipl-league/backend/scripts/fetch_playing_11.py root@72.62.229.16:/opt/services/ipl-scraper/)",
+      "Bash(scp /Users/meetdeshani/Desktop/ipl-league/backend/src/controllers/leaderboard.controller.js root@72.62.229.16:/opt/services/ipl-backend/src/controllers/leaderboard.controller.js)",
+      "Bash(scp /Users/meetdeshani/Desktop/ipl-league/backend/src/controllers/auth.controller.js root@72.62.229.16:/opt/services/ipl-backend/src/controllers/auth.controller.js)",
+      "Bash(git push:*)",
+      "Bash(gh auth:*)",
+      "Bash(__NEW_LINE_a995227ee31c8715__ git:*)"
     ]
   }
 }
