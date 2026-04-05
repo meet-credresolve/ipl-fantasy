@@ -1155,8 +1155,20 @@ def update_match_scores(db, cb_match_id, scorecard):
             }
         return performances[pid]
 
-    # Build cb_id → player map for fielding lookups
+    # Build cb_id -> player map for fielding lookups.
+    # Two-pass: first scan ALL innings to build the complete map so that
+    # fielders from inning 2 are resolvable during inning 1 dismissals
+    # (e.g. Pant catches during the opposition's batting before LSG bats).
     cb_to_player = {}
+    for _inn in scorecard["innings"]:
+        for _b in _inn["batting"]:
+            _p = find_player(_b["name"], _b.get("cb_id"))
+            if _p and _b.get("cb_id"):
+                cb_to_player[_b["cb_id"]] = _p
+        for _bw in _inn["bowling"]:
+            _p = find_player(_bw["name"], _bw.get("cb_id"))
+            if _p and _bw.get("cb_id"):
+                cb_to_player[_bw["cb_id"]] = _p
 
     for innings in scorecard["innings"]:
         # ── Batting ──
