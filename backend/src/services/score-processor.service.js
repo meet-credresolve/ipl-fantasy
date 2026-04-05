@@ -21,10 +21,40 @@ async function processPerformances(matchId, performances, { markCompleted = fals
   if (!match) throw new Error('Match not found');
   if (match.status === 'abandoned') throw new Error('Abandoned matches are voided — no points awarded');
 
-  // 1. Calculate and upsert each player's performance + fantasy points
-  const playerPointsMap = {}; // { playerId: fantasyPoints }
+  // 1a. Merge duplicate performances that resolved to the same playerId.
+  //     Prevents the overwrite bug where an orphan fielding entry (catches only)
+  //     and a full batting entry both resolve to the same player — the second upsert
+  //     would nuke the first's data. Merge: max for batting/bowling, sum for fielding.
+  const mergedByPlayer = new Map();
 
   for (const perf of performances) {
+    const pid = String(perf.playerId);
+    if (!mergedByPlayer.has(pid)) {
+      mergedByPlayer.set(pid, { ...perf });
+    } else {
+      const existing = mergedByPlayer.get(pid);
+      existing.runs = Math.max(existing.runs || 0, perf.runs || 0);
+      existing.ballsFaced = Math.max(existing.ballsFaced || 0, perf.ballsFaced || 0);
+      existing.fours = Math.max(existing.fours || 0, perf.fours || 0);
+      existing.sixes = Math.max(existing.sixes || 0, perf.sixes || 0);
+      existing.didBat = existing.didBat || perf.didBat || false;
+      existing.isDismissed = existing.isDismissed || perf.isDismissed || false;
+      existing.oversBowled = Math.max(existing.oversBowled || 0, perf.oversBowled || 0);
+      existing.runsConceded = Math.max(existing.runsConceded || 0, perf.runsConceded || 0);
+      existing.wickets = Math.max(existing.wickets || 0, perf.wickets || 0);
+      existing.maidens = Math.max(existing.maidens || 0, perf.maidens || 0);
+      existing.lbwBowledWickets = Math.max(existing.lbwBowledWickets || 0, perf.lbwBowledWickets || 0);
+      existing.catches = (existing.catches || 0) + (perf.catches || 0);
+      existing.stumpings = (existing.stumpings || 0) + (perf.stumpings || 0);
+      existing.runOutDirect = (existing.runOutDirect || 0) + (perf.runOutDirect || 0);
+      existing.runOutIndirect = (existing.runOutIndirect || 0) + (perf.runOutIndirect || 0);
+    }
+  }
+
+  // 1b. Calculate and upsert each merged player performance
+  const playerPointsMap = {};
+
+  for (const [, perf] of mergedByPlayer) {
     const player = await Player.findById(perf.playerId);
     if (!player) continue;
 
