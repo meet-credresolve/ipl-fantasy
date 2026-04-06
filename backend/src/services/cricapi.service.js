@@ -431,8 +431,23 @@ function mapScorecardToPerformances(scorecardData) {
   return {
     performances: Object.values(playerMap),
     matchEnded,
+    matchStatus: data.status || '',
     images,
   };
+}
+
+/**
+ * Convert a CricAPI result string to local format by replacing full team names with abbreviations.
+ * e.g., "Chennai Super Kings won by 5 wickets" → "CSK won by 5 wickets"
+ */
+function convertResultToLocal(resultStr) {
+  if (!resultStr) return '';
+  let result = resultStr;
+  for (const [fullName, abbr] of Object.entries(TEAM_NAME_TO_ABBR)) {
+    const regex = new RegExp(fullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    result = result.replace(regex, abbr);
+  }
+  return result;
 }
 
 module.exports = {
@@ -446,5 +461,6 @@ module.exports = {
   convertOvers,
   parseDismissal,
   teamNameToAbbr,
+  convertResultToLocal,
   autoLinkMatches,
 };
