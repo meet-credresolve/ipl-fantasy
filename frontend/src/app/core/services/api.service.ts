@@ -89,8 +89,8 @@ export class ApiService {
     return this.http.get<ScoringRulesResponse>(`${this.base}/scores/rules`);
   }
 
-  submitScores(matchId: string, performances: Partial<PlayerPerformance>[]) {
-    return this.http.post(`${this.base}/scores/${matchId}`, { performances });
+  submitScores(matchId: string, performances: Partial<PlayerPerformance>[], result = '') {
+    return this.http.post(`${this.base}/scores/${matchId}`, { performances, result });
   }
 
   // ── Leaderboard ────────────────────────────────────────────────────────────
