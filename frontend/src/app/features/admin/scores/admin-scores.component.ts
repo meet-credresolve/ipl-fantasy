@@ -42,7 +42,14 @@ import { firstValueFrom } from 'rxjs';
         </div>
 
         <form [formGroup]="scoresForm" (ngSubmit)="submitScores()">
-          <div class="space-y-3" formArrayName="performances">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Match Result</mat-label>
+            <input matInput formControlName="matchResult"
+                   placeholder="e.g. CSK won by 5 wickets" />
+            <mat-hint>Required for prediction bonus points (25 pts for correct winner, 80 pts for super over)</mat-hint>
+          </mat-form-field>
+
+          <div class="space-y-3 mt-4" formArrayName="performances">
             @for (player of squad.value()!.players; track player._id; let i = $index) {
               <mat-expansion-panel>
                 <mat-expansion-panel-header>
@@ -161,6 +168,7 @@ export class AdminScoresComponent {
   });
 
   readonly scoresForm = this.fb.group({
+    matchResult: [''],
     performances: this.fb.array([]),
   });
 
@@ -189,8 +197,9 @@ export class AdminScoresComponent {
   submitScores() {
     this.submitting.set(true);
     const perfs = (this.scoresForm.value.performances ?? []) as any[];
+    const matchResult = this.scoresForm.value.matchResult ?? '';
 
-    this.api.submitScores(this.matchId(), perfs).subscribe({
+    this.api.submitScores(this.matchId(), perfs, matchResult).subscribe({
       next: () => {
         this.snackBar.open('✅ Scores submitted! Fantasy points calculated.', 'OK', { duration: 3000 });
         this.router.navigate(['/admin/matches']);
