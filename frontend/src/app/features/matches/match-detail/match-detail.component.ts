@@ -95,7 +95,7 @@ import { PlayerScoresTabComponent } from './player-scores-tab.component';
               </div>
               <div class="flex items-center gap-2">
                 <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold" style="background: var(--color-warning); color: white;">🔥</span>
-                <span>Super Over: +50 pts</span>
+                <span>Super Over: +80 pts</span>
               </div>
             </div>
             <div class="flex gap-3">
@@ -123,7 +123,7 @@ import { PlayerScoresTabComponent } from './player-scores-tab.component';
             @if (myPrediction()) {
               <p class="text-xs text-center" style="color: var(--color-text-muted);">
                 @if (myPredictionType() === 'superover') {
-                  You bet on a Superover (+50 pts if correct)
+                  You bet on a Superover (+80 pts if correct)
                 } @else {
                   You predicted {{ myPrediction() }} to win (+25 pts if correct)
                 }
