@@ -338,7 +338,7 @@ function mapScorecardToPerformances(scorecardData) {
         p.runsConceded = (b.r ?? b.runs ?? 0);
         p.wickets = (b.w ?? b.wickets ?? 0);
         p.maidens = (b.m ?? b.maidens ?? 0);
-        p.dotBalls = (b.d ?? b.dots ?? b.dotBalls ?? 0);
+        p.dotBalls = (b["0s"] ?? b.d ?? b.dots ?? 0);
 
         // Extract player image
         const img = b.bowler?.img || b.img;
