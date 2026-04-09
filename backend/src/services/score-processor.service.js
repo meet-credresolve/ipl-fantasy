@@ -16,7 +16,7 @@ const { evaluatePredictions } = require('./prediction-evaluator.service');
  * @param {boolean} options.markCompleted - if true, sets match to 'completed', locks teams, calculates awards
  * @returns {{ teamsUpdated: number, playerPointsMap: Object }}
  */
-async function processPerformances(matchId, performances, { markCompleted = false } = {}) {
+async function processPerformances(matchId, performances, { markCompleted = false, result = '' } = {}) {
   const match = await Match.findById(matchId);
   if (!match) throw new Error('Match not found');
   if (match.status === 'abandoned') throw new Error('Abandoned matches are voided — no points awarded');
@@ -44,6 +44,7 @@ async function processPerformances(matchId, performances, { markCompleted = fals
       existing.wickets = Math.max(existing.wickets || 0, perf.wickets || 0);
       existing.maidens = Math.max(existing.maidens || 0, perf.maidens || 0);
       existing.lbwBowledWickets = Math.max(existing.lbwBowledWickets || 0, perf.lbwBowledWickets || 0);
+      existing.dotBalls = Math.max(existing.dotBalls || 0, perf.dotBalls || 0);
       existing.catches = (existing.catches || 0) + (perf.catches || 0);
       existing.stumpings = (existing.stumpings || 0) + (perf.stumpings || 0);
       existing.runOutDirect = (existing.runOutDirect || 0) + (perf.runOutDirect || 0);
@@ -89,6 +90,9 @@ async function processPerformances(matchId, performances, { markCompleted = fals
 
   // 3. If finalizing: mark completed + awards + evaluate predictions
   if (markCompleted) {
+    // Persist result string if provided (manual admin path).
+    // Live poller sets match.result before calling us; admin form passes it in options.
+    if (result) match.result = result;
     match.status = 'completed';
     await match.save();
 
